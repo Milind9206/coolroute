@@ -8,12 +8,8 @@ type Cta = { label: string; href: string };
 
 export interface SculptureHeroProps {
   brand?: string;
-  eyebrow?: string;
-  headline?: string;
-  headlineAccent?: string;
   body?: string;
   primaryCta?: Cta;
-  backdropText?: string;
   src?: string;
   darkSrc?: string;
   mobileSrc?: string;
@@ -21,13 +17,18 @@ export interface SculptureHeroProps {
   /** Controlled theme. If omitted, the hero keeps its own state. */
   theme?: "light" | "dark";
   onThemeChange?: (theme: "light" | "dark") => void;
+  authenticated?: boolean;
+  onSignOut?: () => void;
+  onOpenPlanner?: () => void;
+  showPrimaryCta?: boolean;
+  belowContent?: React.ReactNode;
 }
 
 // Stock photos. Swap any of these; if one fails to load, a procedural shape is used.
-const IMG_LIGHT = "/coolroute-logo.svg";
-const IMG_DARK = "/coolroute-logo.svg";
-const IMG_LIGHT_M = "/coolroute-logo.svg";
-const IMG_DARK_M = "/coolroute-logo.svg";
+const IMG_LIGHT = "/coolroute-wordmark.svg";
+const IMG_DARK = "/coolroute-wordmark.svg";
+const IMG_LIGHT_M = "/coolroute-wordmark.svg";
+const IMG_DARK_M = "/coolroute-wordmark.svg";
 
 const QUAD_VS = `#version 300 es
 out vec2 vUv;
@@ -74,10 +75,10 @@ void main(){
   float r = length(gl_PointCoord - .5) * 2.;
   if (r > 1.) discard;
   float a = smoothstep(1., .2, r);
-  vec3 dark = mix(vec3(.15,.55,.5), vec3(1.,.95,.8), vL);
+  vec3 dark = mix(vec3(.06,.72,.4), vec3(.76,1.,.88), vL);
   vec3 light = mix(vec3(.1,.45,.38), vec3(.04,.12,.1), vL);
-  vec3 col = mix(light, dark, uDark) + vS * 0.35;
-  o = vec4(col, a * mix(.75, .55, uDark));
+  vec3 col = mix(light, dark, uDark) + vS * mix(0.35, 0.5, uDark);
+  o = vec4(col, a * mix(.75, .9, uDark));
 }`;
 
 function compile(gl: WebGL2RenderingContext, type: number, src: string) {
@@ -134,7 +135,8 @@ function sampleHomes(img: HTMLImageElement | null, aspect: number, dark: boolean
       const t = (i / 200) * Math.PI * 2;
       const r = H * 0.3 * (1 + 0.18 * Math.sin(3 * t) + 0.09 * Math.sin(5 * t + 1));
       const x = W * 0.68 + r * Math.cos(t), y = H * 0.5 + r * Math.sin(t);
-      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      if (i) ctx.lineTo(x, y);
+      else ctx.moveTo(x, y);
     }
     ctx.stroke();
   }
@@ -143,14 +145,19 @@ function sampleHomes(img: HTMLImageElement | null, aspect: number, dark: boolean
   let sum = 0;
   for (let i = 0; i < W * H; i++) {
     const l = (0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2]) / 255;
-    sum += Math.pow(dark ? l : 1 - l, 1.5) + 0.02;
+    const shapeWeight = Math.pow(dark ? l : 1 - l, 1.5);
+    sum += 0.1 + shapeWeight * 0.9;
     cum[i] = sum;
   }
   const out = new Float32Array(count * 4);
   for (let k = 0; k < count; k++) {
     const r = Math.random() * sum;
     let lo = 0, hi = cum.length - 1;
-    while (lo < hi) { const m = (lo + hi) >> 1; cum[m] < r ? (lo = m + 1) : (hi = m); }
+    while (lo < hi) {
+      const m = (lo + hi) >> 1;
+      if (cum[m] < r) lo = m + 1;
+      else hi = m;
+    }
     const x = (lo % W + Math.random()) / W, y = 1 - (Math.floor(lo / W) + Math.random()) / H;
     const l = (0.2126 * px[lo * 4] + 0.7152 * px[lo * 4 + 1] + 0.0722 * px[lo * 4 + 2]) / 255;
     out.set([x, y, dark ? l : 1 - l, Math.random()], k * 4);
@@ -160,18 +167,19 @@ function sampleHomes(img: HTMLImageElement | null, aspect: number, dark: boolean
 
 export default function SculptureHero({
   brand = "CoolRoute®",
-  eyebrow = "Pedestrian Routing Engine — Shade & Heat Budgets",
-  headline = "Walk in the\nliving shade.",
-  headlineAccent = "living shade.",
-  body = "Standard maps optimise only for shortest distance. CoolRoute models street segments, solar angles, slope effort, and crossing wait times to keep you within your personal heat-exposure budget.",
+  body = "Compare real walking routes with solar-based shade estimates, then choose the option that fits your heat-exposure budget.",
   primaryCta = { label: "Open Route Planner", href: "#planner" },
-  backdropText = "CoolRoute",
   src = IMG_LIGHT,
   darkSrc = IMG_DARK,
   mobileSrc = IMG_LIGHT_M,
   mobileDarkSrc = IMG_DARK_M,
   theme,
   onThemeChange,
+  authenticated = false,
+  onSignOut,
+  onOpenPlanner,
+  showPrimaryCta = true,
+  belowContent,
 }: SculptureHeroProps) {
   const [innerTheme, setInnerTheme] = React.useState<"light" | "dark">("dark");
   const current = theme ?? innerTheme;
@@ -199,18 +207,19 @@ export default function SculptureHero({
   React.useEffect(() => {
     const canvas = canvasRef.current, section = sectionRef.current;
     if (!canvas || !section) return;
+    const showFallback = (enabled: boolean) => window.requestAnimationFrame(() => setNoGL(enabled));
     const gl = canvas.getContext("webgl2", { alpha: true, antialias: false, premultipliedAlpha: false });
-    if (!gl || !gl.getExtension("EXT_color_buffer_float")) { setNoGL(true); return; }
-    setNoGL(false);
+    if (!gl || !gl.getExtension("EXT_color_buffer_float")) { showFallback(true); return; }
+    showFallback(false);
 
     const SIZE = mobile ? 96 : 160, COUNT = SIZE * SIZE;
     let raf = 0, disposed = false, img: HTMLImageElement | null = null;
-    let simP: WebGLProgram, drawP: WebGLProgram, homeTex: WebGLTexture;
+    let simP: WebGLProgram, drawP: WebGLProgram;
     const posTex: WebGLTexture[] = [], fbo: WebGLFramebuffer[] = [];
     try {
       simP = program(gl, QUAD_VS, SIM_FS);
       drawP = program(gl, DRAW_VS, DRAW_FS);
-    } catch { setNoGL(true); return; }
+    } catch { showFallback(true); return; }
 
     const init = new Float32Array(COUNT * 4);
     for (let i = 0; i < COUNT; i++) init.set([Math.random(), Math.random(), 0, 0], i * 4);
@@ -221,8 +230,8 @@ export default function SculptureHero({
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, posTex[i], 0);
       fbo.push(f);
     }
-    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) { setNoGL(true); return; }
-    homeTex = floatTex(gl, SIZE, null);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) { showFallback(true); return; }
+    const homeTex = floatTex(gl, SIZE, null);
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
 
@@ -266,7 +275,6 @@ export default function SculptureHero({
       const dt = Math.min(0.033, (now - last) / 1000);
       last = now;
       ptr.on += (ptr.target - ptr.on) * 0.12;
-
       gl.disable(gl.BLEND);
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo[1 - cur]);
       gl.viewport(0, 0, SIZE, SIZE);
@@ -287,13 +295,14 @@ export default function SculptureHero({
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.enable(gl.BLEND);
-      isDark ? gl.blendFunc(gl.SRC_ALPHA, gl.ONE) : gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      if (isDark) gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+      else gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.useProgram(drawP);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, posTex[cur]);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, homeTex);
       gl.uniform1i(U(drawP, "uPos"), 0); gl.uniform1i(U(drawP, "uHome"), 1);
       gl.uniform1i(U(drawP, "uSize"), SIZE);
-      gl.uniform1f(U(drawP, "uPx"), Math.max(1.6, (canvas.width / 1440) * 2.4));
+      gl.uniform1f(U(drawP, "uPx"), Math.max(4.2, (canvas.width / 1440) * 5.0));
       gl.uniform1f(U(drawP, "uDark"), isDark ? 1 : 0);
       gl.drawArrays(gl.POINTS, 0, COUNT);
       raf = requestAnimationFrame(frame);
@@ -315,7 +324,6 @@ export default function SculptureHero({
     };
   }, [isDark, mobile, activeSrc]);
 
-  const lines = headline.split("\n");
   return (
     <section
       ref={sectionRef}
@@ -323,27 +331,23 @@ export default function SculptureHero({
         isDark ? "bg-[#07100d] text-white" : "bg-[#f3f1ea] text-[#10201a]"
       }`}
     >
-      <div
-        aria-hidden
-        className={`pointer-events-none absolute inset-0 -z-10 flex select-none items-center justify-center overflow-hidden whitespace-nowrap text-[clamp(3.5rem,14vw,12rem)] font-bold leading-none tracking-[-0.09em] ${
-          isDark ? "text-white/[0.12]" : "text-black/[0.10]"
-        }`}
-      >
-        {backdropText}
-      </div>
-
       {noGL ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={activeSrc} alt="" crossOrigin="anonymous" className="absolute inset-0 -z-10 h-full w-full object-contain px-8 py-28 opacity-40" />
+        <img src={activeSrc} alt="" crossOrigin="anonymous" className="hero-wordmark-fallback absolute inset-0 -z-10 h-full w-full object-contain px-8 py-28 opacity-40" />
       ) : (
-        <canvas ref={canvasRef} className="absolute inset-0 -z-10 h-full w-full" />
+        <canvas ref={canvasRef} className="hero-wordmark-canvas absolute inset-0 -z-10 h-full w-full" />
       )}
 
-      <nav className="flex items-center justify-between px-6 py-5 md:px-12">
-        <span className="text-lg font-semibold tracking-tight">{brand}</span>
+      <nav aria-label={`${brand} navigation`} className="relative z-10 flex items-center justify-end px-6 py-5 md:px-12">
         <div className="flex items-center gap-2 sm:gap-3">
-          <Link href="/login" className="rounded-full px-4 py-2 text-sm font-medium transition hover:bg-white/10">Log in</Link>
-          <Link href="/signup" className={`rounded-full px-4 py-2 text-sm font-medium transition ${isDark ? "bg-emerald-300 text-black hover:bg-emerald-200" : "bg-emerald-800 text-white hover:bg-emerald-700"}`}>Sign up</Link>
+          {authenticated ? (
+            <button type="button" onClick={onSignOut} className="rounded-full px-4 py-2 text-sm font-medium transition hover:bg-white/10">Sign out</button>
+          ) : (
+            <>
+              <Link href="/login" className="rounded-full px-4 py-2 text-sm font-medium transition hover:bg-white/10">Log in</Link>
+              <Link href="/signup" className={`rounded-full px-4 py-2 text-sm font-medium transition ${isDark ? "bg-emerald-300 text-black hover:bg-emerald-200" : "bg-emerald-800 text-white hover:bg-emerald-700"}`}>Sign up</Link>
+            </>
+          )}
           <button
             type="button"
             onClick={toggle}
@@ -357,35 +361,24 @@ export default function SculptureHero({
         </div>
       </nav>
 
-      <div className="flex flex-1 flex-col justify-center px-6 pb-16 md:px-12">
-        <p className={`mb-4 text-xs font-medium uppercase tracking-[0.2em] ${isDark ? "text-emerald-300/80" : "text-emerald-800"}`}>
-          {eyebrow}
-        </p>
-        <h1 className="max-w-3xl text-5xl font-semibold leading-[1.02] tracking-tight md:text-7xl">
-          {lines.map((line, i) => (
-            <span key={i} className="block">
-              {headlineAccent && line.includes(headlineAccent) ? (
-                <>
-                  {line.replace(headlineAccent, "")}
-                  <span className={isDark ? "text-emerald-300" : "text-emerald-700"}>{headlineAccent}</span>
-                </>
-              ) : (
-                line
-              )}
-            </span>
-          ))}
-        </h1>
-        <p className={`mt-6 max-w-xl text-base leading-relaxed md:text-lg ${isDark ? "text-white/70" : "text-black/65"}`}>{body}</p>
-        <div className="mt-8 flex flex-wrap gap-3">
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-between px-6 py-10 text-center md:px-12 md:py-12">
+        <p className={`hero-reveal hero-delay-2 mx-auto mt-5 max-w-2xl text-base leading-relaxed md:text-xl ${isDark ? "text-white/85" : "text-black/70"}`}>{body}</p>
+        {showPrimaryCta && <div className="hero-reveal hero-delay-4 mt-6 flex flex-wrap gap-3">
           <a
             href={primaryCta.href}
-            className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition hover:gap-3 ${
+            onClick={(event) => {
+              if (!onOpenPlanner) return;
+              event.preventDefault();
+              onOpenPlanner();
+            }}
+            className={`group inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition hover:gap-3 ${
               isDark ? "bg-emerald-300 text-black" : "bg-emerald-800 text-white"
             }`}
           >
-            {primaryCta.label} <ArrowRight className="h-4 w-4" />
+            {primaryCta.label} <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
           </a>
-        </div>
+        </div>}
+        {belowContent}
       </div>
     </section>
   );

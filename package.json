@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-maplibre-worker.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-maplibre-worker.mjs",
     "build": "next build",
+    "prestart": "node scripts/copy-maplibre-worker.mjs",
     "start": "next start",
     "lint": "eslint"
   },
@@ -12,6 +15,8 @@
     "@tailwindcss/postcss": "^4.3.3",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
+    "leaflet": "^1.9.4",
+    "@maplibre/maplibre-gl-leaflet": "^0.1.4",
     "lucide-react": "^1.57.0",
     "maplibre-gl": "^6.14.0",
     "next": "16.4.1",
@@ -26,6 +31,7 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

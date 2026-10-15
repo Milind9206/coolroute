@@ -2,18 +2,19 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, Eye, EyeOff, MapPin } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import { DEMO_ACCESS_KEY } from "@/lib/demo-access";
 
 type AuthMode = "login" | "signup";
 
 export default function AuthPanel({ mode }: { mode: AuthMode }) {
   const isSignup = mode === "signup";
   const [showPassword, setShowPassword] = React.useState(false);
-  const [notice, setNotice] = React.useState(false);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setNotice(true);
+    window.sessionStorage.setItem(DEMO_ACCESS_KEY, "granted");
+    window.location.assign("/");
   }
 
   return (
@@ -22,34 +23,25 @@ export default function AuthPanel({ mode }: { mode: AuthMode }) {
         <div aria-hidden className="absolute -left-32 top-1/4 h-[30rem] w-[30rem] rounded-full bg-emerald-400/10 blur-[100px]" />
         <div aria-hidden className="absolute -bottom-40 -right-32 h-[32rem] w-[32rem] rounded-full bg-teal-300/10 blur-[110px]" />
 
-        <Link href="/" className="relative z-10 inline-flex items-center gap-3 text-lg font-semibold tracking-tight">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-300 text-[#07100d]"><MapPin className="h-5 w-5" /></span>
+        <div className="relative z-10 inline-flex items-center gap-3 text-lg font-semibold tracking-tight">
           CoolRoute
-        </Link>
+        </div>
 
         <div className="relative z-10 max-w-xl py-16">
           <p className="mb-5 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">A cooler way across town</p>
           <h1 className="text-5xl font-semibold leading-[1.04] tracking-tight xl:text-6xl">Find the route that feels better.</h1>
           <p className="mt-6 max-w-md text-lg leading-relaxed text-white/60">Plan your walk around shade, sun and step-free streets with CoolRoute.</p>
 
-          <div className="relative mt-14 flex h-48 items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03]">
-            <div aria-hidden className="absolute inset-x-8 top-1/2 h-px -rotate-[13deg] bg-gradient-to-r from-transparent via-emerald-300/60 to-transparent" />
-            <div aria-hidden className="absolute inset-x-16 top-1/2 h-px rotate-[18deg] bg-gradient-to-r from-transparent via-teal-200/50 to-transparent" />
-            <span className="relative rounded-full border border-emerald-200/40 bg-emerald-300/10 px-5 py-3 text-sm font-medium text-emerald-100 shadow-[0_0_50px_rgba(110,231,183,0.15)]">Walk in the living shade</span>
-          </div>
         </div>
 
-        <p className="relative z-10 text-xs text-white/40">CoolRoute · Walk in the living shade</p>
+        <p className="relative z-10 text-xs text-white/40">CoolRoute</p>
       </section>
 
       <section className="flex min-h-svh items-center justify-center px-5 py-8 sm:px-8">
         <div className="w-full max-w-md">
-          <Link href="/" className="mb-10 inline-flex items-center gap-2 text-sm text-white/55 transition hover:text-white lg:hidden">
-            <MapPin className="h-4 w-4 text-emerald-300" /> CoolRoute
-          </Link>
-          <Link href="/" className="mb-8 hidden items-center gap-2 text-sm text-white/50 transition hover:text-white sm:inline-flex">
-            <ArrowLeft className="h-4 w-4" /> Back to home
-          </Link>
+          <div className="mb-10 text-sm text-white/55 lg:hidden">
+            CoolRoute
+          </div>
 
           <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-6 shadow-2xl shadow-black/20 sm:p-9">
             <p className="text-sm font-medium text-emerald-300">{isSignup ? "Start your journey" : "Welcome back"}</p>
@@ -83,8 +75,9 @@ export default function AuthPanel({ mode }: { mode: AuthMode }) {
                 {isSignup ? "Create account" : "Log in"}
               </button>
 
-              {notice && <p role="status" className="rounded-xl border border-amber-300/20 bg-amber-200/5 px-4 py-3 text-sm leading-relaxed text-amber-100/80">These forms are a UI preview. Account sign-in is not connected yet.</p>}
             </form>
+
+            <p className="mt-4 text-xs leading-relaxed text-white/40">Demo access only: this form does not verify identity or create a real account.</p>
 
             <p className="mt-7 text-center text-sm text-white/55">
               {isSignup ? "Already have an account? " : "New to CoolRoute? "}
