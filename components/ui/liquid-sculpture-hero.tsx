@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { ArrowRight, Moon, Sun } from "lucide-react";
 
 type Cta = { label: string; href: string };
@@ -23,10 +24,10 @@ export interface SculptureHeroProps {
 }
 
 // Stock photos. Swap any of these; if one fails to load, a procedural shape is used.
-const IMG_LIGHT = "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=70";
-const IMG_DARK = "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1600&q=70";
-const IMG_LIGHT_M = "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=70";
-const IMG_DARK_M = "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=800&q=70";
+const IMG_LIGHT = "/coolroute-logo.svg";
+const IMG_DARK = "/coolroute-logo.svg";
+const IMG_LIGHT_M = "/coolroute-logo.svg";
+const IMG_DARK_M = "/coolroute-logo.svg";
 
 const QUAD_VS = `#version 300 es
 out vec2 vUv;
@@ -112,9 +113,16 @@ function sampleHomes(img: HTMLImageElement | null, aspect: number, dark: boolean
   cv.width = W; cv.height = H;
   const ctx = cv.getContext("2d", { willReadFrequently: true })!;
   if (img && img.naturalWidth) {
-    const s = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+    const s = Math.min(W / img.naturalWidth, H / img.naturalHeight);
     const w = img.naturalWidth * s, h = img.naturalHeight * s;
     ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+    ctx.globalCompositeOperation = "source-in";
+    ctx.fillStyle = dark ? "#ffffff" : "#07100d";
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "destination-over";
+    ctx.fillStyle = dark ? "#07100d" : "#ffffff";
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "source-over";
   } else {
     ctx.fillStyle = dark ? "#000" : "#fff";
     ctx.fillRect(0, 0, W, H);
@@ -157,7 +165,7 @@ export default function SculptureHero({
   headlineAccent = "living shade.",
   body = "Standard maps optimise only for shortest distance. CoolRoute models street segments, solar angles, slope effort, and crossing wait times to keep you within your personal heat-exposure budget.",
   primaryCta = { label: "Open Route Planner", href: "#planner" },
-  backdropText = "coolroute",
+  backdropText = "CoolRoute",
   src = IMG_LIGHT,
   darkSrc = IMG_DARK,
   mobileSrc = IMG_LIGHT_M,
@@ -317,8 +325,8 @@ export default function SculptureHero({
     >
       <div
         aria-hidden
-        className={`pointer-events-none absolute inset-0 -z-10 flex select-none items-center justify-center text-[28vw] font-black leading-none tracking-tighter ${
-          isDark ? "text-white/[0.04]" : "text-black/[0.05]"
+        className={`pointer-events-none absolute inset-0 -z-10 flex select-none items-center justify-center overflow-hidden whitespace-nowrap text-[clamp(3.5rem,14vw,12rem)] font-bold leading-none tracking-[-0.09em] ${
+          isDark ? "text-white/[0.12]" : "text-black/[0.10]"
         }`}
       >
         {backdropText}
@@ -326,23 +334,27 @@ export default function SculptureHero({
 
       {noGL ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={activeSrc} alt="" crossOrigin="anonymous" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-40" />
+        <img src={activeSrc} alt="" crossOrigin="anonymous" className="absolute inset-0 -z-10 h-full w-full object-contain px-8 py-28 opacity-40" />
       ) : (
         <canvas ref={canvasRef} className="absolute inset-0 -z-10 h-full w-full" />
       )}
 
       <nav className="flex items-center justify-between px-6 py-5 md:px-12">
         <span className="text-lg font-semibold tracking-tight">{brand}</span>
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label={isDark ? "Switch to light mode" : "Switch to night mode"}
-          className={`flex h-10 w-10 items-center justify-center rounded-full border transition hover:scale-105 ${
-            isDark ? "border-white/20 hover:bg-white/10" : "border-black/20 hover:bg-black/5"
-          }`}
-        >
-          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link href="/login" className="rounded-full px-4 py-2 text-sm font-medium transition hover:bg-white/10">Log in</Link>
+          <Link href="/signup" className={`rounded-full px-4 py-2 text-sm font-medium transition ${isDark ? "bg-emerald-300 text-black hover:bg-emerald-200" : "bg-emerald-800 text-white hover:bg-emerald-700"}`}>Sign up</Link>
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={isDark ? "Switch to light mode" : "Switch to night mode"}
+            className={`flex h-10 w-10 items-center justify-center rounded-full border transition hover:scale-105 ${
+              isDark ? "border-white/20 hover:bg-white/10" : "border-black/20 hover:bg-black/5"
+            }`}
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+        </div>
       </nav>
 
       <div className="flex flex-1 flex-col justify-center px-6 pb-16 md:px-12">
