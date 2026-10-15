@@ -12,7 +12,6 @@ export interface SculptureHeroProps {
   headlineAccent?: string;
   body?: string;
   primaryCta?: Cta;
-  secondaryCta?: Cta;
   backdropText?: string;
   src?: string;
   darkSrc?: string;
