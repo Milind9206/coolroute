@@ -324,7 +324,7 @@ export default function SculptureHero({
     >
       <div
         aria-hidden
-        className={`pointer-events-none absolute inset-0 -z-10 flex select-none items-center justify-center text-4xl font-semibold leading-none tracking-tight transition-colors duration-1000 md:text-5xl ${
+        className={`pointer-events-none absolute inset-y-0 right-0 -z-10 hidden w-[48%] select-none items-center justify-end overflow-hidden whitespace-nowrap pr-6 text-[clamp(3rem,6vw,7rem)] font-semibold leading-none tracking-tight transition-colors duration-1000 md:flex md:pr-8 ${
           isDark ? "text-white/[0.04]" : "text-black/[0.05]"
         }`}
       >
