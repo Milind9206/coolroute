@@ -201,6 +201,8 @@ export default function CoolRoutePlanner() {
       const maplibre = await import("maplibre-gl");
       if (cancelled || !mapEl.current) return;
 
+      maplibre.setWorkerUrl(new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString());
+
       const style = resolvedTheme === "light" ? STYLE_LIGHT : STYLE_DARK;
       styleRef.current = style;
       const lons = graph.nodes.map((n) => n.lon), lats = graph.nodes.map((n) => n.lat);
