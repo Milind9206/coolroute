@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import * as maplibregl from "maplibre-gl";
+import type * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useTheme } from "next-themes";
 import { AlertTriangle, Info, Sun } from "lucide-react";
@@ -178,25 +178,49 @@ export default function CoolRoutePlanner() {
   React.useEffect(() => {
     const n = graph.nodes[graph.start];
     fetch(`/api/environment?lat=${n.lat.toFixed(4)}&lon=${n.lon.toFixed(4)}`)
-      .then((r) => r.json()).then(setEnv).catch(() => setEnv(null));
+      .then((r) => {
+        if (!r.ok) throw new Error("Environment request failed");
+        return r.json();
+      })
+      .then((result) => {
+        if (typeof result.temperatureC !== "number" || typeof result.uvIndex !== "number") {
+          throw new Error("Environment response was incomplete");
+        }
+        setEnv(result);
+      })
+      .catch(() => setEnv(null));
   }, [graph]);
 
   // Create the map once
   React.useEffect(() => {
     if (!mapEl.current) return;
-    const style = resolvedTheme === "light" ? STYLE_LIGHT : STYLE_DARK;
-    styleRef.current = style;
-    const lons = graph.nodes.map((n) => n.lon), lats = graph.nodes.map((n) => n.lat);
-    const map = new maplibregl.Map({
-      container: mapEl.current, style,
-      bounds: [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
-      fitBoundsOptions: { padding: 50 },
-      attributionControl: { compact: true },
-    });
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-    map.on("style.load", () => ensureLayers(map, dataRef.current));
-    mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+    let cancelled = false;
+    let map: maplibregl.Map | null = null;
+
+    const initialize = async () => {
+      const maplibre = await import("maplibre-gl");
+      if (cancelled || !mapEl.current) return;
+
+      const style = resolvedTheme === "light" ? STYLE_LIGHT : STYLE_DARK;
+      styleRef.current = style;
+      const lons = graph.nodes.map((n) => n.lon), lats = graph.nodes.map((n) => n.lat);
+      map = new maplibre.Map({
+        container: mapEl.current, style,
+        bounds: [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+        fitBoundsOptions: { padding: 50 },
+        attributionControl: { compact: true },
+      });
+      map.addControl(new maplibre.NavigationControl({ showCompass: false }), "top-right");
+      map.on("style.load", () => { if (map) ensureLayers(map, dataRef.current); });
+      mapRef.current = map;
+    };
+
+    void initialize().catch(() => { mapRef.current = null; });
+    return () => {
+      cancelled = true;
+      map?.remove();
+      mapRef.current = null;
+    };
   }, [graph]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Night mode sync: liberty <-> dark
@@ -306,3 +330,4 @@ export default function CoolRoutePlanner() {
     </section>
   );
 }
+
