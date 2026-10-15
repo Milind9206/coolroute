@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       temperatureC: Math.round(temperatureC),
       uvIndex: Math.round(uvIndex * 10) / 10,
+      timezone: typeof weather.timezone === "string" ? weather.timezone : undefined,
       source: "open-meteo",
     });
   } catch {

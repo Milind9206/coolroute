@@ -22,6 +22,7 @@ export interface SculptureHeroProps {
   /** Controlled theme. If omitted, the hero keeps its own state. */
   theme?: "light" | "dark";
   onThemeChange?: (theme: "light" | "dark") => void;
+  onSignOut?: () => void;
 }
 
 // Stock photos. Swap any of these; if one fails to load, a procedural shape is used.
@@ -49,8 +50,8 @@ void main(){
     sin(uTime*0.8 + h.w*40. + h.y*6.), cos(uTime*0.7 + h.w*30. + h.x*6.));
   vec2 f = (target - pos) * 7.0;
   vec2 d = pos - uPointer; d.x *= uAspect;
-  float push = uPointerOn * smoothstep(0.2, 0.0, length(d));
-  f += normalize(d + 1e-5) * push * 4.0;
+  float push = uPointerOn * smoothstep(0.12, 0.0, length(d));
+  f += normalize(d + 1e-5) * push * 1.15;
   vel = (vel + f * uDt) * exp(-3.2 * uDt);
   pos += vel * uDt;
   o = vec4(pos, vel);
@@ -167,6 +168,7 @@ export default function SculptureHero({
   mobileDarkSrc = IMG_DARK_M,
   theme,
   onThemeChange,
+  onSignOut,
 }: SculptureHeroProps) {
   const [innerTheme, setInnerTheme] = React.useState<"light" | "dark">("dark");
   const current = theme ?? innerTheme;
@@ -175,6 +177,7 @@ export default function SculptureHero({
   const [noGL, setNoGL] = React.useState(false);
   const sectionRef = React.useRef<HTMLElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const darkMixRef = React.useRef(isDark ? 1 : 0);
 
   React.useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -260,7 +263,8 @@ export default function SculptureHero({
       if (disposed) return;
       const dt = Math.min(0.033, (now - last) / 1000);
       last = now;
-      ptr.on += (ptr.target - ptr.on) * 0.12;
+      ptr.on += (ptr.target - ptr.on) * 0.065;
+      darkMixRef.current += ((isDark ? 1 : 0) - darkMixRef.current) * (1 - Math.exp(-dt / 0.8));
 
       gl.disable(gl.BLEND);
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo[1 - cur]);
@@ -282,14 +286,14 @@ export default function SculptureHero({
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.enable(gl.BLEND);
-      isDark ? gl.blendFunc(gl.SRC_ALPHA, gl.ONE) : gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.useProgram(drawP);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, posTex[cur]);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, homeTex);
       gl.uniform1i(U(drawP, "uPos"), 0); gl.uniform1i(U(drawP, "uHome"), 1);
       gl.uniform1i(U(drawP, "uSize"), SIZE);
       gl.uniform1f(U(drawP, "uPx"), Math.max(1.6, (canvas.width / 1440) * 2.4));
-      gl.uniform1f(U(drawP, "uDark"), isDark ? 1 : 0);
+      gl.uniform1f(U(drawP, "uDark"), darkMixRef.current);
       gl.drawArrays(gl.POINTS, 0, COUNT);
       raf = requestAnimationFrame(frame);
     };
@@ -314,13 +318,13 @@ export default function SculptureHero({
   return (
     <section
       ref={sectionRef}
-      className={`relative isolate flex min-h-[100svh] w-full flex-col overflow-hidden ${
+      className={`relative isolate flex min-h-[100svh] w-full flex-col overflow-hidden transition-colors duration-1000 ease-in-out ${
         isDark ? "bg-[#07100d] text-white" : "bg-[#f3f1ea] text-[#10201a]"
       }`}
     >
       <div
         aria-hidden
-        className={`pointer-events-none absolute inset-0 -z-10 flex select-none items-center justify-center text-[28vw] font-black leading-none tracking-tighter ${
+        className={`pointer-events-none absolute inset-0 -z-10 flex select-none items-center justify-center text-[28vw] font-black leading-none tracking-tighter transition-colors duration-1000 ${
           isDark ? "text-white/[0.04]" : "text-black/[0.05]"
         }`}
       >
@@ -335,12 +339,15 @@ export default function SculptureHero({
       )}
 
       <nav className="flex items-center justify-between px-6 py-5 md:px-12">
-        <span className="text-lg font-semibold tracking-tight">{brand}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-lg font-semibold tracking-tight">{brand}</span>
+          {onSignOut && <button type="button" onClick={onSignOut} className={`rounded-full px-3 py-2 text-sm transition-colors ${isDark ? "text-white/55 hover:bg-white/10 hover:text-white" : "text-black/55 hover:bg-black/5 hover:text-black"}`}>Sign out</button>}
+        </div>
         <button
           type="button"
           onClick={toggle}
           aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-          className={`flex h-12 w-12 items-center justify-center rounded-full border transition hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/50 ${
+          className={`flex h-12 w-12 items-center justify-center rounded-full border transition-all duration-1000 hover:rotate-12 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/50 ${
             isDark ? "border-white/20 hover:bg-white/10" : "border-black/20 hover:bg-black/5"
           }`}
         >
@@ -349,7 +356,7 @@ export default function SculptureHero({
       </nav>
 
       <div className="flex flex-1 flex-col justify-center px-6 pb-16 md:px-12">
-        <p className={`mb-4 text-sm font-semibold uppercase tracking-[0.16em] md:text-base ${isDark ? "text-emerald-300" : "text-emerald-900"}`}>
+        <p className={`mb-4 text-sm font-semibold uppercase tracking-[0.16em] transition-colors duration-1000 md:text-base ${isDark ? "text-emerald-300" : "text-emerald-900"}`}>
           {eyebrow}
         </p>
         <h1 className="max-w-4xl text-6xl font-semibold leading-[1.02] tracking-tight md:text-8xl">
@@ -358,7 +365,7 @@ export default function SculptureHero({
               {headlineAccent && line.includes(headlineAccent) ? (
                 <>
                   {line.replace(headlineAccent, "")}
-                  <span className={isDark ? "text-emerald-300" : "text-emerald-700"}>{headlineAccent}</span>
+                  <span className={`transition-colors duration-1000 ${isDark ? "text-emerald-300" : "text-emerald-700"}`}>{headlineAccent}</span>
                 </>
               ) : (
                 line
@@ -366,7 +373,7 @@ export default function SculptureHero({
             </span>
           ))}
         </h1>
-        <p className={`mt-6 max-w-2xl text-lg leading-relaxed md:text-xl ${isDark ? "text-white/80" : "text-black/75"}`}>{body}</p>
+        <p className={`mt-6 max-w-2xl text-lg leading-relaxed transition-colors duration-1000 md:text-xl ${isDark ? "text-white/80" : "text-black/75"}`}>{body}</p>
         <div className="mt-9 flex flex-wrap gap-4">
           <Link
             href={primaryCta.href}

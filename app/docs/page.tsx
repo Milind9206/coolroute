@@ -43,7 +43,7 @@ export default function DocsPage() {
         <p>
           The neighbourhood is a graph G = (V, E). Nodes V are junctions and crossings, each with a crossing wait time
           (seconds) and a junction shade value. Edges E are street segments with length, tree canopy share C, building
-          height H, street orientation θ, slope grade, a step-free flag and a missing-data flag.
+          height H, street orientation θ, slope grade and a step-free flag.
         </p>
       </section>
 
@@ -95,7 +95,7 @@ subject to Σ H_e ≤ B
       <section className="space-y-3">
         <h2 className="text-2xl font-semibold">6. Uncertainty and limits</h2>
         <ul className="list-disc space-y-1 pl-6">
-          <li>Segments with missing shade data are assumed to have 30% canopy and are drawn as dashed yellow lines.</li>
+          <li>Shade is estimated from the demo network’s simplified tree canopy and building geometry.</li>
           <li>A detour above 25% added distance raises a warning.</li>
           <li>Step-free access is a hard constraint: stairs are removed from the graph, not penalised.</li>
           <li>

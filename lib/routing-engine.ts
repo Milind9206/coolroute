@@ -21,7 +21,6 @@ export type GEdge = {
   orient: number;   // street bearing, degrees (0 = N-S, 90 = E-W)
   slope: number;    // grade a -> b
   stepFree: boolean;
-  missing: boolean; // shade data missing/uncertain
   closable?: boolean;
 };
 export type Graph = { nodes: GNode[]; edges: GEdge[]; start: number; end: number };
@@ -53,7 +52,7 @@ function mulberry32(seed: number) {
   };
 }
 
-export function buildGraph(): Graph {
+export function buildGraph(start = (ROWS - 1) * COLS, end = COLS - 1): Graph {
   const rnd = mulberry32(42);
   const nodes: GNode[] = [];
   for (let r = 0; r < ROWS; r++)
@@ -82,7 +81,6 @@ export function buildGraph(): Graph {
       orient: vertical ? 0 : 90,
       slope: (rnd() - 0.5) * 0.08,
       stepFree: sunny || avenue ? true : rnd() > 0.12,
-      missing: !sunny && rnd() < 0.15,
       closable: avenue && A.c === 2,
     });
   };
@@ -92,21 +90,50 @@ export function buildGraph(): Graph {
       if (c < COLS - 1) add(a, a + 1, false);
       if (r < ROWS - 1) add(a, a + COLS, true);
     }
-  return { nodes, edges, start: (ROWS - 1) * COLS, end: COLS - 1 };
+  return { nodes, edges, start, end };
 }
 
 // ---------- Solar geometry ----------
-export function solarAt(hour: number): Sun {
+function localClockToUtc(hour: number, timeZone: string): Date {
   const now = new Date();
-  const ms = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) + (hour - 5.5) * 3600000; // IST
-  const p = SunCalc.getPosition(new Date(ms), ORIGIN.lat + 0.002, ORIGIN.lon + 0.003);
+  const dateParts = new Intl.DateTimeFormat("en-US", {
+    timeZone, year: "numeric", month: "numeric", day: "numeric",
+  }).formatToParts(now);
+  const part = (type: string) => Number(dateParts.find((item) => item.type === type)?.value);
+  const wholeHour = Math.floor(hour);
+  const minute = Math.round((hour - wholeHour) * 60);
+  const targetAsUtc = Date.UTC(part("year"), part("month") - 1, part("day"), wholeHour, minute);
+  let guess = targetAsUtc;
+
+  // Resolve the local wall-clock time through the IANA zone, including DST.
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone, year: "numeric", month: "numeric", day: "numeric",
+    hour: "numeric", minute: "numeric", second: "numeric", hourCycle: "h23",
+  });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const parts = formatter.formatToParts(new Date(guess));
+    const value = (type: string) => Number(parts.find((item) => item.type === type)?.value);
+    const representedAsUtc = Date.UTC(value("year"), value("month") - 1, value("day"), value("hour"), value("minute"), value("second"));
+    guess += targetAsUtc - representedAsUtc;
+  }
+  return new Date(guess);
+}
+
+export function solarAt(hour: number, latitude = ORIGIN.lat, longitude = ORIGIN.lon, timeZone = "Asia/Kolkata"): Sun {
+  let date: Date;
+  try {
+    date = localClockToUtc(hour, timeZone);
+  } catch {
+    date = localClockToUtc(hour, "UTC");
+  }
+  const p = SunCalc.getPosition(date, latitude, longitude);
   return { altitude: p.altitude, azimuth: (p.azimuth + Math.PI) % (2 * Math.PI) }; // suncalc measures from south
 }
 
 // ---------- Segment cost ----------
 export function segmentCost(g: Graph, e: GEdge, dir: 1 | -1, sun: Sun, shadeMult: number) {
   const night = sun.altitude <= 0;
-  const canopy = Math.min(1, (e.missing ? 0.3 : e.canopy) * shadeMult);
+  const canopy = Math.min(1, e.canopy * shadeMult);
   const sBuilding = night
     ? 1
     : Math.min(1, (e.height * Math.abs(Math.sin(sun.azimuth - e.orient * RAD))) /
@@ -189,7 +216,7 @@ function toStats(g: Graph, l: Label): RouteStats {
   for (let c: Label | null = l; c; c = c.prev) { nodeIds.unshift(c.node); if (c.edge) edges.unshift(c.edge); }
   return {
     edgeIds: edges.map((e) => e.id), nodeIds, time: l.t, heat: l.h, dist: l.d,
-    uncertain: edges.filter((e) => e.missing).length,
+    uncertain: 0,
     coords: nodeIds.map((i) => [g.nodes[i].lon, g.nodes[i].lat] as [number, number]),
   };
 }
@@ -223,8 +250,6 @@ export function evaluate(g: Graph, sc: Scenario): Evaluation {
   const detourPct = (cool.dist / baseline.dist - 1) * 100;
   if (detourPct > 25)
     alerts.push({ level: "warn", code: "detour", message: `The cooler route adds ${detourPct.toFixed(0)}% distance, which is a large detour.` });
-  if (cool.uncertain > 0)
-    alerts.push({ level: "warn", code: "uncertain", message: `The route crosses ${cool.uncertain} segment(s) with missing shade data, so exposure is uncertain.` });
   if (budgetMet && cool.edgeIds.join() === baseline.edgeIds.join())
     alerts.push({ level: "info", code: "same", message: "The shortest route already fits your budget, so CoolRoute matches it. Lower the budget to see a cooler alternative." });
   if (sun.altitude <= 0)
