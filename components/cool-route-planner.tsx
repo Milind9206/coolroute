@@ -3,7 +3,6 @@
 import * as React from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useTheme } from "next-themes";
 import { AlertTriangle, Info, Sun } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -19,8 +18,33 @@ maplibregl.setWorkerUrl(
   new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString(),
 );
 
-const STYLE_LIGHT = "https://tiles.openfreemap.org/styles/liberty";
-const STYLE_DARK = "https://tiles.openfreemap.org/styles/dark";
+const SATELLITE_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {
+    satellite: {
+      type: "raster",
+      tiles: ["https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+      tileSize: 256,
+      attribution: "Imagery: Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community",
+      maxzoom: 19,
+    },
+  },
+  layers: [{ id: "satellite", type: "raster", source: "satellite" }],
+};
+
+const TERRAIN_SOURCE = {
+  tileSize: 256,
+  maxZoom: 15,
+  getSourceUrl: ({ x, y, z }: { x: number; y: number; z: number }) =>
+    `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`,
+  getElevation: ({ r, g, b }: { r: number; g: number; b: number }) =>
+    r * 256 + g + b / 256 - 32768,
+};
+
+function scenarioDate(hour: number) {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) + (hour - 5.5) * 3600000);
+}
 
 type FC = GeoJSON.FeatureCollection;
 type MapData = { edges: FC; base: FC; cool: FC; points: FC };
@@ -159,7 +183,6 @@ function AlertItem({ a }: { a: RouteAlert }) {
 }
 
 export default function CoolRoutePlanner() {
-  const { resolvedTheme } = useTheme();
   const graph = React.useMemo(() => buildGraph(), []);
   const [hour, setHour] = React.useState(13);
   const [shadeMult, setShadeMult] = React.useState(1);
@@ -174,9 +197,12 @@ export default function CoolRoutePlanner() {
 
   const mapEl = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<maplibregl.Map | null>(null);
+  const shadeMapRef = React.useRef<{ setDate: (date: Date) => unknown; remove: () => void } | null>(null);
+  const hourRef = React.useRef(hour);
+  const [shadeMapStatus, setShadeMapStatus] = React.useState<"loading" | "ready" | "missing-key" | "error">("loading");
   const dataRef = React.useRef<MapData>(data);
-  const styleRef = React.useRef<string>("");
   dataRef.current = data;
+  hourRef.current = hour;
 
   // Ambient conditions via the server-side proxy
   React.useEffect(() => {
@@ -188,28 +214,55 @@ export default function CoolRoutePlanner() {
   // Create the map once
   React.useEffect(() => {
     if (!mapEl.current) return;
-    const style = resolvedTheme === "light" ? STYLE_LIGHT : STYLE_DARK;
-    styleRef.current = style;
+    let disposed = false;
     const lons = graph.nodes.map((n) => n.lon), lats = graph.nodes.map((n) => n.lat);
     const map = new maplibregl.Map({
-      container: mapEl.current, style,
+      container: mapEl.current, style: SATELLITE_STYLE,
       bounds: [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
       fitBoundsOptions: { padding: 50 },
       attributionControl: { compact: true },
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.on("style.load", () => ensureLayers(map, dataRef.current));
+    map.once("load", () => {
+      const apiKey = process.env.NEXT_PUBLIC_SHADEMAP_API_KEY;
+      if (!apiKey) {
+        setShadeMapStatus("missing-key");
+        return;
+      }
+
+      void import("mapbox-gl-shadow-simulator").then(({ default: ShadeMap }) => {
+        if (disposed) return;
+        const shadeMap = new ShadeMap({
+          apiKey,
+          date: scenarioDate(hourRef.current),
+          color: "#07100d",
+          opacity: 0.58,
+          terrainSource: TERRAIN_SOURCE,
+          debug: (message) => console.debug("ShadeMap:", message),
+        });
+        shadeMap.addTo(map as never);
+        shadeMapRef.current = shadeMap;
+        setShadeMapStatus("ready");
+      }).catch((error: unknown) => {
+        console.error("ShadeMap could not be loaded.", error);
+        setShadeMapStatus("error");
+      });
+    });
     mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+    return () => {
+      disposed = true;
+      shadeMapRef.current?.remove();
+      shadeMapRef.current = null;
+      map.remove();
+      mapRef.current = null;
+    };
   }, [graph]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Night mode sync: liberty <-> dark
+  // Keep ShadeMap's shadow timestamp in sync with the scenario time slider.
   React.useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !resolvedTheme) return;
-    const style = resolvedTheme === "light" ? STYLE_LIGHT : STYLE_DARK;
-    if (style !== styleRef.current) { styleRef.current = style; map.setStyle(style); }
-  }, [resolvedTheme]);
+    shadeMapRef.current?.setDate(scenarioDate(hour));
+  }, [hour]);
 
   // Push new data on every scenario change
   React.useEffect(() => {
@@ -275,6 +328,15 @@ export default function CoolRoutePlanner() {
         <div className="space-y-4 lg:col-span-8">
           <div className="overflow-hidden rounded-xl border border-border">
             <div ref={mapEl} className="h-[380px] w-full md:h-[480px] lg:h-[540px]" />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>Satellite view · imagery © Esri and contributors</span>
+            <span aria-live="polite">
+              {shadeMapStatus === "loading" && "Loading ShadeMap…"}
+              {shadeMapStatus === "ready" && "Live sun and shadow overlay"}
+              {shadeMapStatus === "missing-key" && "Add NEXT_PUBLIC_SHADEMAP_API_KEY to enable live shade"}
+              {shadeMapStatus === "error" && "ShadeMap could not load"}
+            </span>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span><b style={{ color: "#6366f1" }}>━</b> Shortest</span>
