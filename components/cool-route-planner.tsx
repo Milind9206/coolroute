@@ -289,7 +289,11 @@ export default function CoolRoutePlanner() {
             </CardContent>
           </Card>
 
-          <div className="space-y-2">{ev.alerts.map((a) => <AlertItem key={a.code} a={a} />)}</div>
+          <div className="space-y-2">
+            {ev.alerts
+              .filter((a) => a.code !== "budget-unmet" && a.code !== "uncertain")
+              .map((a) => <AlertItem key={a.code} a={a} />)}
+          </div>
         </div>
 
         <div className="space-y-4 lg:col-span-8">
