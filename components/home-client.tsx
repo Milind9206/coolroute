@@ -20,10 +20,10 @@ export default function HomeClient() {
         onThemeChange={setTheme}
         onSignOut={() => { signOutLocal(); router.replace("/"); }}
         brand="CoolRoute"
-        eyebrow="A cooler way to get there"
-        headline={"Walk in the\nliving shade."}
-        headlineAccent="living shade."
-        body="Plan a walking route around shade, sunlight and your comfort."
+        eyebrow="SHADE FIRST. COMFORT ALWAYS."
+        headline={"Find a\ncooler route."}
+        headlineAccent="cooler route."
+        body="Choose where you’re going. CoolRoute compares walking paths to help you spend less time in direct sun."
         primaryCta={{ label: "Plan a walk", href: "/planner" }}
         secondaryCta={null}
         backdropText="CoolRoute"

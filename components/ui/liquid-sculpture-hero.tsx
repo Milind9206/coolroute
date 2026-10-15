@@ -325,7 +325,7 @@ export default function SculptureHero({
       <div
         aria-hidden
         className={`pointer-events-none absolute inset-y-0 left-1/2 -z-10 hidden w-[60%] -translate-x-1/2 select-none items-center justify-center overflow-hidden whitespace-nowrap text-[clamp(3rem,6vw,7rem)] font-semibold leading-none tracking-tight transition-colors duration-1000 md:flex ${
-          isDark ? "text-white/[0.10]" : "text-black/[0.10]"
+          isDark ? "text-[#a8b56c]/[0.22]" : "text-[#10201a]/[0.16]"
         }`}
       >
         {backdropText}
@@ -340,7 +340,7 @@ export default function SculptureHero({
 
       <nav className="flex items-center justify-between px-6 py-5 md:px-12">
         <div className="flex items-center gap-3">
-          <span className="text-lg font-semibold tracking-tight">{brand}</span>
+          <span className={`text-lg font-semibold tracking-tight transition-colors duration-1000 ${isDark ? "text-[#a8b56c]" : "text-[#10201a]"}`}>{brand}</span>
           {onSignOut && <button type="button" onClick={onSignOut} className={`rounded-full px-3 py-2 text-sm transition-colors ${isDark ? "text-white/55 hover:bg-white/10 hover:text-white" : "text-black/55 hover:bg-black/5 hover:text-black"}`}>Sign out</button>}
         </div>
         <button
@@ -365,7 +365,7 @@ export default function SculptureHero({
               {headlineAccent && line.includes(headlineAccent) ? (
                 <>
                   {line.replace(headlineAccent, "")}
-                  <span className={`transition-colors duration-1000 ${isDark ? "text-[#a8b56c]" : "text-emerald-700"}`}>{headlineAccent}</span>
+                  <span className={`transition-colors duration-1000 ${isDark ? "text-[#a8b56c]" : "text-emerald-900"}`}>{headlineAccent}</span>
                 </>
               ) : (
                 line
