@@ -26,7 +26,7 @@ export default function NotFound() {
           href="/"
           className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition hover:opacity-90"
         >
-          Back to planner <ArrowRight className="h-4 w-4" />
+          Back to CoolRoute <ArrowRight className="h-4 w-4" />
         </Link>
         <Link
           href="/docs"

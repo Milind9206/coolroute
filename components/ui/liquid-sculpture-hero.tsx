@@ -13,7 +13,7 @@ export interface SculptureHeroProps {
   headlineAccent?: string;
   body?: string;
   primaryCta?: Cta;
-  secondaryCta?: Cta;
+  secondaryCta?: Cta | null;
   backdropText?: string;
   src?: string;
   darkSrc?: string;
@@ -159,7 +159,7 @@ export default function SculptureHero({
   headlineAccent = "living shade.",
   body = "Standard maps optimise only for shortest distance. CoolRoute models street segments, solar angles, slope effort, and crossing wait times to keep you within your personal heat-exposure budget.",
   primaryCta = { label: "Open Route Planner", href: "#planner" },
-  secondaryCta = { label: "View Math & Proofs", href: "/docs" },
+  secondaryCta,
   backdropText = "coolroute",
   src = IMG_LIGHT,
   darkSrc = IMG_DARK,
@@ -339,20 +339,20 @@ export default function SculptureHero({
         <button
           type="button"
           onClick={toggle}
-          aria-label={isDark ? "Switch to light mode" : "Switch to night mode"}
-          className={`flex h-10 w-10 items-center justify-center rounded-full border transition hover:scale-105 ${
+          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          className={`flex h-12 w-12 items-center justify-center rounded-full border transition hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/50 ${
             isDark ? "border-white/20 hover:bg-white/10" : "border-black/20 hover:bg-black/5"
           }`}
         >
-          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </button>
       </nav>
 
       <div className="flex flex-1 flex-col justify-center px-6 pb-16 md:px-12">
-        <p className={`mb-4 text-xs font-medium uppercase tracking-[0.2em] ${isDark ? "text-emerald-300/80" : "text-emerald-800"}`}>
+        <p className={`mb-4 text-sm font-semibold uppercase tracking-[0.16em] md:text-base ${isDark ? "text-emerald-300" : "text-emerald-900"}`}>
           {eyebrow}
         </p>
-        <h1 className="max-w-3xl text-5xl font-semibold leading-[1.02] tracking-tight md:text-7xl">
+        <h1 className="max-w-4xl text-6xl font-semibold leading-[1.02] tracking-tight md:text-8xl">
           {lines.map((line, i) => (
             <span key={i} className="block">
               {headlineAccent && line.includes(headlineAccent) ? (
@@ -366,24 +366,24 @@ export default function SculptureHero({
             </span>
           ))}
         </h1>
-        <p className={`mt-6 max-w-xl text-base leading-relaxed md:text-lg ${isDark ? "text-white/70" : "text-black/65"}`}>{body}</p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <a
+        <p className={`mt-6 max-w-2xl text-lg leading-relaxed md:text-xl ${isDark ? "text-white/80" : "text-black/75"}`}>{body}</p>
+        <div className="mt-9 flex flex-wrap gap-4">
+          <Link
             href={primaryCta.href}
-            className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition hover:gap-3 ${
+            className={`inline-flex min-h-14 items-center gap-3 rounded-full px-8 py-4 text-lg font-semibold transition hover:gap-4 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/50 ${
               isDark ? "bg-emerald-300 text-black" : "bg-emerald-800 text-white"
             }`}
           >
-            {primaryCta.label} <ArrowRight className="h-4 w-4" />
-          </a>
-          <Link
+            {primaryCta.label} <ArrowRight className="h-5 w-5" />
+          </Link>
+          {secondaryCta && <Link
             href={secondaryCta.href}
             className={`inline-flex items-center rounded-full border px-6 py-3 text-sm font-medium transition ${
               isDark ? "border-white/25 hover:bg-white/10" : "border-black/25 hover:bg-black/5"
             }`}
           >
             {secondaryCta.label}
-          </Link>
+          </Link>}
         </div>
       </div>
     </section>
