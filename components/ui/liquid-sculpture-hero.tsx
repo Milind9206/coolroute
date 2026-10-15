@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { ArrowRight, Moon, Sun } from "lucide-react";
 
 type Cta = { label: string; href: string };
@@ -159,7 +158,6 @@ export default function SculptureHero({
   headlineAccent = "living shade.",
   body = "Standard maps optimise only for shortest distance. CoolRoute models street segments, solar angles, slope effort, and crossing wait times to keep you within your personal heat-exposure budget.",
   primaryCta = { label: "Open Route Planner", href: "#planner" },
-  secondaryCta = { label: "View Math & Proofs", href: "/docs" },
   backdropText = "coolroute",
   src = IMG_LIGHT,
   darkSrc = IMG_DARK,
@@ -376,16 +374,9 @@ export default function SculptureHero({
           >
             {primaryCta.label} <ArrowRight className="h-4 w-4" />
           </a>
-          <Link
-            href={secondaryCta.href}
-            className={`inline-flex items-center rounded-full border px-6 py-3 text-sm font-medium transition ${
-              isDark ? "border-white/25 hover:bg-white/10" : "border-black/25 hover:bg-black/5"
-            }`}
-          >
-            {secondaryCta.label}
-          </Link>
         </div>
       </div>
     </section>
   );
 }
+
