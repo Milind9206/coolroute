@@ -325,7 +325,7 @@ export default function SculptureHero({
       <div
         aria-hidden
         className={`pointer-events-none absolute inset-y-0 left-1/2 -z-10 hidden w-[60%] -translate-x-1/2 select-none items-center justify-center overflow-hidden whitespace-nowrap text-[clamp(3rem,6vw,7rem)] font-semibold leading-none tracking-tight transition-colors duration-1000 md:flex ${
-          isDark ? "text-[#a8b56c]/[0.22]" : "text-[#10201a]/[0.16]"
+          isDark ? "text-[#a8b56c]/[0.12]" : "text-black/[0.10]"
         }`}
       >
         {backdropText}
@@ -365,7 +365,7 @@ export default function SculptureHero({
               {headlineAccent && line.includes(headlineAccent) ? (
                 <>
                   {line.replace(headlineAccent, "")}
-                  <span className={`transition-colors duration-1000 ${isDark ? "text-[#a8b56c]" : "text-emerald-900"}`}>{headlineAccent}</span>
+                  <span className={`transition-colors duration-1000 ${isDark ? "text-[#a8b56c]" : "text-emerald-700"}`}>{headlineAccent}</span>
                 </>
               ) : (
                 line
