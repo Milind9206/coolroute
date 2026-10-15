@@ -15,6 +15,10 @@ import {
   type Alert as RouteAlert, type Graph, type RouteStats, type Scenario,
 } from "@/lib/routing-engine";
 
+maplibregl.setWorkerUrl(
+  new URL("maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).toString(),
+);
+
 const STYLE_LIGHT = "https://tiles.openfreemap.org/styles/liberty";
 const STYLE_DARK = "https://tiles.openfreemap.org/styles/dark";
 

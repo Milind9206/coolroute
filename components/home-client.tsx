@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useTheme } from "next-themes";
 import SculptureHero from "@/components/ui/liquid-sculpture-hero";
-import CoolRoutePlanner from "@/components/cool-route-planner";
 
 export default function HomeClient() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -11,16 +10,20 @@ export default function HomeClient() {
   React.useEffect(() => setMounted(true), []);
 
   return (
-    <main>
+    <main className="min-h-screen">
       <SculptureHero
-        // Until mounted, the hero uses its own default (dark) to avoid a hydration mismatch.
+        // Keep the hero's theme switch in sync with the rest of the app.
         theme={mounted ? (resolvedTheme === "light" ? "light" : "dark") : undefined}
         onThemeChange={setTheme}
+        brand="CoolRoute"
+        eyebrow="A cooler way to get there"
+        headline="Walk in the\nliving shade."
+        headlineAccent="living shade."
+        body="Plan a walking route around shade, sunlight and your comfort."
+        primaryCta={{ label: "Plan a walk", href: "/planner" }}
+        secondaryCta={null}
+        backdropText="COOL"
       />
-      <CoolRoutePlanner />
-      <footer className="border-t border-border px-6 py-8 text-center text-xs text-muted-foreground">
-        CoolRoute is a modelling demo. Sun exposure values are estimates, not medical advice.
-      </footer>
     </main>
   );
 }
