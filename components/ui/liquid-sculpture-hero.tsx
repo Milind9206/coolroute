@@ -76,7 +76,7 @@ void main(){
   float r = length(gl_PointCoord - .5) * 2.;
   if (r > 1.) discard;
   float a = smoothstep(1., .2, r);
-  vec3 dark = mix(vec3(.15,.55,.5), vec3(1.,.95,.8), vL);
+  vec3 dark = vec3(1.);
   vec3 light = mix(vec3(.1,.45,.38), vec3(.04,.12,.1), vL);
   vec3 col = mix(light, dark, uDark) + vS * 0.35;
   o = vec4(col, a * mix(.75, .55, uDark));
@@ -325,7 +325,7 @@ export default function SculptureHero({
       <div
         aria-hidden
         className={`pointer-events-none absolute inset-y-0 left-1/2 -z-10 hidden w-[60%] -translate-x-1/2 select-none items-center justify-center overflow-hidden whitespace-nowrap text-[clamp(3rem,6vw,7rem)] font-semibold leading-none tracking-tight transition-colors duration-1000 md:flex ${
-          isDark ? "text-white/[0.07]" : "text-black/[0.08]"
+          isDark ? "text-white/[0.10]" : "text-black/[0.10]"
         }`}
       >
         {backdropText}
@@ -356,7 +356,7 @@ export default function SculptureHero({
       </nav>
 
       <div className="flex flex-1 flex-col justify-center px-6 pb-16 md:px-12">
-        <p className={`mb-4 text-sm font-semibold uppercase tracking-[0.16em] transition-colors duration-1000 md:text-base ${isDark ? "text-emerald-300" : "text-emerald-900"}`}>
+        <p className={`mb-4 text-sm font-semibold uppercase tracking-[0.16em] transition-colors duration-1000 md:text-base ${isDark ? "text-[#a8b56c]" : "text-emerald-900"}`}>
           {eyebrow}
         </p>
         <h1 className="max-w-4xl text-6xl font-semibold leading-[1.02] tracking-tight md:text-8xl">
@@ -365,7 +365,7 @@ export default function SculptureHero({
               {headlineAccent && line.includes(headlineAccent) ? (
                 <>
                   {line.replace(headlineAccent, "")}
-                  <span className={`transition-colors duration-1000 ${isDark ? "text-emerald-300" : "text-emerald-700"}`}>{headlineAccent}</span>
+                  <span className={`transition-colors duration-1000 ${isDark ? "text-[#a8b56c]" : "text-emerald-700"}`}>{headlineAccent}</span>
                 </>
               ) : (
                 line
