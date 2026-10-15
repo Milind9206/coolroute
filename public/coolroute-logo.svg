@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" fill="none">
+  <g stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M56 230c72 0 57-157 132-157 74 0 43 157 119 157 44 0 56-68 92-68" stroke-width="20"/>
+    <circle cx="57" cy="230" r="19" fill="#fff" stroke="none"/>
+    <circle cx="188" cy="73" r="19" fill="#fff" stroke="none"/>
+    <circle cx="307" cy="230" r="19" fill="#fff" stroke="none"/>
+    <path d="M359 159c19-34 54-54 94-54 59 0 101 42 101 98s-42 98-101 98c-40 0-75-20-94-54" stroke-width="18"/>
+  </g>
+  <text x="600" y="219" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="150" font-weight="700" letter-spacing="-7">CoolRoute</text>
+</svg>
+

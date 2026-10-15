@@ -96,11 +96,13 @@ export function buildGraph(): Graph {
 }
 
 // ---------- Solar geometry ----------
-export function solarAt(hour: number): Sun {
+export function solarAt(hour: number, lat = ORIGIN.lat + 0.002, lon = ORIGIN.lon + 0.003): Sun {
   const now = new Date();
-  const ms = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) + (hour - 5.5) * 3600000; // IST
-  const p = SunCalc.getPosition(new Date(ms), ORIGIN.lat + 0.002, ORIGIN.lon + 0.003);
-  return { altitude: p.altitude, azimuth: (p.azimuth + Math.PI) % (2 * Math.PI) }; // suncalc measures from south
+  // Interpret the selected hour as local solar time at the selected location.
+  const ms = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) + (hour - lon / 15) * 3600000;
+  const p = SunCalc.getPosition(new Date(ms), lat, lon);
+  // SunCalc returns degrees and measures azimuth clockwise from north.
+  return { altitude: p.altitude * RAD, azimuth: p.azimuth * RAD };
 }
 
 // ---------- Segment cost ----------
