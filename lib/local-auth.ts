@@ -26,6 +26,10 @@ export async function signInLocal(email: string, password: string) {
   return authRequest("/api/auth/login", { email, password });
 }
 
+export async function resendConfirmationLocal(email: string) {
+  return authRequest("/api/auth/resend", { email });
+}
+
 export async function signOutLocal() {
   await authRequest("/api/auth/logout", {});
 }

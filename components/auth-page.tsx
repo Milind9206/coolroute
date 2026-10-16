@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Moon, Sun } from "lucide-react";
-import { getLocalSession, signInLocal, signUpLocal } from "@/lib/local-auth";
+import { getLocalSession, resendConfirmationLocal, signInLocal, signUpLocal } from "@/lib/local-auth";
 import { useLanguage } from "@/components/language-provider";
 import LanguageToggle from "@/components/language-toggle";
 
@@ -30,6 +30,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
   const [showPassword, setShowPassword] = React.useState(false);
   const [error, setError] = React.useState("");
   const [notice, setNotice] = React.useState("");
+  const [resendAvailable, setResendAvailable] = React.useState(false);
+  const [resending, setResending] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const isDark = mounted ? resolvedTheme === "dark" : true;
   const signup = mode === "signup";
@@ -54,14 +56,31 @@ export default function AuthPage({ mode }: AuthPageProps) {
         const result = await signUpLocal(name, email, password);
         if (result.confirmationRequired) {
           setNotice(t(result.message ?? "Check your email to confirm your account, then sign in."));
+          setResendAvailable(true);
           return;
         }
       } else await signInLocal(email, password);
       router.push(destination);
     } catch (reason) {
-      setError(t(reason instanceof Error ? reason.message : "We couldn't complete that request."));
+      const message = reason instanceof Error ? reason.message : "We couldn't complete that request.";
+      setError(t(message));
+      if (message === "Please confirm your email before signing in.") setResendAvailable(true);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function resendConfirmation() {
+    setResending(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await resendConfirmationLocal(email) as { message?: string };
+      setNotice(t(result.message ?? "If this account needs confirmation, a new email is on its way."));
+    } catch (reason) {
+      setError(t(reason instanceof Error ? reason.message : "We couldn't resend the email. Please wait a moment and try again."));
+    } finally {
+      setResending(false);
     }
   }
 
@@ -115,6 +134,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
             </label>
             {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
             {notice && <p role="status" className="text-sm text-emerald-500">{notice}</p>}
+            {resendAvailable && <button type="button" onClick={resendConfirmation} disabled={resending || !email.trim()} className="text-sm font-medium text-emerald-500 underline underline-offset-4 disabled:opacity-50">{t(resending ? "Please wait…" : "Resend confirmation email")}</button>}
             <button type="submit" disabled={busy} className={`group flex min-h-14 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold transition-all duration-500 hover:gap-4 disabled:cursor-wait disabled:opacity-60 ${isDark ? "bg-emerald-300 text-[#07100d] hover:bg-emerald-200" : "bg-emerald-800 text-white hover:bg-emerald-700"}`}>
               {t(busy ? "Please wait…" : signup ? "Create account" : "Sign in")} {!busy && <ArrowRight className="h-5 w-5" />}
             </button>

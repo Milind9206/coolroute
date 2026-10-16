@@ -13,7 +13,11 @@ export async function POST(request: NextRequest) {
       cache: "no-store",
     });
     const result = await response.json() as Record<string, unknown>;
-    if (!response.ok) return NextResponse.json({ error: "Email or password is incorrect." }, { status: 401 });
+    if (!response.ok) {
+      const providerError = result as { code?: string; error_code?: string; msg?: string; message?: string };
+      const unconfirmed = [providerError.code, providerError.error_code, providerError.msg, providerError.message].some((value) => typeof value === "string" && /email not confirmed|email_not_confirmed|user_not_confirmed/i.test(value));
+      return NextResponse.json({ error: unconfirmed ? "Please confirm your email before signing in." : "Email or password is incorrect.", confirmationRequired: unconfirmed }, { status: unconfirmed ? 403 : 401 });
+    }
     const session = await setSessionCookie(result);
     return NextResponse.json({ user: { name: session.user.name, email: session.user.email } });
   } catch (error) {

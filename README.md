@@ -11,7 +11,13 @@ CoolRoute uses Supabase Auth for account credentials and PostgreSQL for user pro
 3. Copy `.env.example` to `.env.local` and fill in your project's URL and anon/publishable key from the Supabase API settings. These server-side variables must also be configured in Vercel for a deployed site.
 4. Restart the development server. New accounts will then be available across browsers and devices after sign-in.
 
-Email confirmation follows the setting in Supabase Authentication. If it is enabled, new users must confirm their email before signing in.
+Email confirmation follows the setting in Supabase Authentication. If enabled, the confirmation link returns to `/auth/callback`, establishes the session, and opens the app. The Supabase Authentication URL Configuration must allow these callback URLs:
+
+- `http://localhost:3000/auth/callback`
+- `https://coolroute-chi.vercel.app/auth/callback`
+- `https://coolroute.runs-on.dev/auth/callback`
+
+Confirmation links are single-use. If a link has expired or was already opened, return to Sign up or Sign in and use **Resend confirmation email** to request another.
 
 The old prototype stored accounts only in one browser. Those accounts do not transfer automatically; create a new account after Supabase is configured.
 

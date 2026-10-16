@@ -11,7 +11,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { url, anonKey } = supabaseConfig();
-    const response = await fetch(`${url}/auth/v1/signup`, {
+    const callbackUrl = new URL("/auth/callback", request.url).toString();
+    const response = await fetch(`${url}/auth/v1/signup?redirect_to=${encodeURIComponent(callbackUrl)}`, {
       method: "POST",
       headers: { apikey: anonKey, "Content-Type": "application/json" },
       body: JSON.stringify({ email: cleanEmail, password, data: { full_name: cleanName } }),
