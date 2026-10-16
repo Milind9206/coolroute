@@ -225,9 +225,28 @@ export default function CoolRoutePlanner() {
   const [routeLoading, setRouteLoading] = React.useState(false);
   const [routeError, setRouteError] = React.useState("");
   const [remoteRoutes, setRemoteRoutes] = React.useState<RemoteRoute[]>([]);
-  const [env, setEnv] = React.useState<{ temperatureC: number; uvIndex: number; source: string; timezone?: string } | null>(null);
+  const [env, setEnv] = React.useState<{ temperatureC: number; uvIndex: number; source: string; timezone?: string; hourly?: { time: string; temperatureC: number; uvIndex: number }[] } | null>(null);
 
   const timeZone = env?.timezone ?? "Asia/Kolkata";
+  const selectedWeather = React.useMemo(() => {
+    if (!env?.hourly?.length) return env;
+    const localDate = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const targetTime = hour * 60;
+    const today = env.hourly.filter((item) => item.time.startsWith(localDate));
+    const remainingToday = today.filter((item) => {
+      const [, clock = "00:00"] = item.time.split("T");
+      const [h, m] = clock.split(":").map(Number);
+      return h * 60 + m >= targetTime;
+    });
+    const candidates = remainingToday.length ? remainingToday : today.length ? today : env.hourly;
+    return candidates.reduce((best, item) => {
+      const [, clock = "00:00"] = item.time.split("T");
+      const [h, m] = clock.split(":").map(Number);
+      const [, bestClock = "00:00"] = best.time.split("T");
+      const [bestH, bestM] = bestClock.split(":").map(Number);
+      return Math.abs(h * 60 + m - targetTime) < Math.abs(bestH * 60 + bestM - targetTime) ? item : best;
+    });
+  }, [env, hour, timeZone]);
   const ev = React.useMemo(() => evaluateRealRoutes(remoteRoutes, hour, shadeMult, budgetMin, startPlace, timeZone), [remoteRoutes, hour, shadeMult, budgetMin, startPlace, timeZone]);
   const data = React.useMemo(() => buildMapData(ev.baseline, ev.cool, startPlace, endPlace), [ev, startPlace, endPlace]);
 
@@ -340,7 +359,7 @@ export default function CoolRoutePlanner() {
         {env && (
           <Badge variant="secondary" className="gap-1.5">
             <Sun className="h-3.5 w-3.5" />
-            {env.temperatureC}°C · UV {env.uvIndex}{env.source === "fallback" ? ` (${t("estimate")})` : ""}
+            {selectedWeather?.temperatureC ?? env.temperatureC}°C · UV {selectedWeather?.uvIndex ?? env.uvIndex}{env.source === "fallback" ? ` (${t("estimate")})` : ""}
           </Badge>
         )}
       </div>

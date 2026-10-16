@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const FALLBACK = { temperatureC: 32, uvIndex: 5, source: "fallback" };
+const FALLBACK = { temperatureC: 32, uvIndex: 5, source: "fallback", hourly: [] };
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
     url.search = new URLSearchParams({
       latitude: String(lat),
       longitude: String(lon),
-      current: "temperature_2m,uv_index",
+      hourly: "temperature_2m,uv_index",
+      forecast_days: "2",
       timezone: "auto",
     }).toString();
 
@@ -30,15 +31,22 @@ export async function GET(request: NextRequest) {
     if (!response.ok) throw new Error(`Weather request failed (${response.status}).`);
 
     const weather = await response.json();
-    const temperatureC = Number(weather.current?.temperature_2m);
-    const uvIndex = Number(weather.current?.uv_index);
-    if (!Number.isFinite(temperatureC) || !Number.isFinite(uvIndex)) {
+    const times: unknown[] = weather.hourly?.time ?? [];
+    const temperatures: unknown[] = weather.hourly?.temperature_2m ?? [];
+    const uvValues: unknown[] = weather.hourly?.uv_index ?? [];
+    const hourly = times.flatMap((time, index) => {
+      const temperatureC = Number(temperatures[index]);
+      const uvIndex = Number(uvValues[index]);
+      if (typeof time !== "string" || !Number.isFinite(temperatureC) || !Number.isFinite(uvIndex)) return [];
+      return [{ time, temperatureC: Math.round(temperatureC), uvIndex: Math.round(uvIndex * 10) / 10 }];
+    });
+    if (hourly.length === 0) {
       throw new Error("Weather response was incomplete.");
     }
 
     return NextResponse.json({
-      temperatureC: Math.round(temperatureC),
-      uvIndex: Math.round(uvIndex * 10) / 10,
+      ...hourly[0],
+      hourly,
       timezone: typeof weather.timezone === "string" ? weather.timezone : undefined,
       source: "open-meteo",
     });
