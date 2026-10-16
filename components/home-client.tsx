@@ -5,10 +5,12 @@ import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import SculptureHero from "@/components/ui/liquid-sculpture-hero";
 import { signOutLocal } from "@/lib/local-auth";
+import { useLanguage } from "@/components/language-provider";
 
 export default function HomeClient() {
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
+  const { t } = useLanguage();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
@@ -20,11 +22,11 @@ export default function HomeClient() {
         onThemeChange={setTheme}
         onSignOut={() => { signOutLocal(); router.replace("/"); }}
         brand="CoolRoute"
-        eyebrow="A cooler way to get there"
-        headline={"Walk in the\nliving shade."}
-        headlineAccent="living shade."
-        body="Plan a walking route around shade, sunlight and your comfort."
-        primaryCta={{ label: "Plan a walk", href: "/planner" }}
+        eyebrow={t("A cooler way to get there")}
+        headline={`${t("Walk in the")}\n${t("living shade.")}`}
+        headlineAccent={t("living shade.")}
+        body={t("Plan a walk around shade, sunlight and your comfort.")}
+        primaryCta={{ label: t("Plan a walk"), href: "/planner" }}
         secondaryCta={null}
         backdropText="CoolRoute"
       />

@@ -10,6 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useLanguage } from "@/components/language-provider";
 import {
   solarAt,
   type Alert as RouteAlert, type RouteStats,
@@ -46,10 +47,10 @@ type MapData = { base: FC; cool: FC; points: FC };
 type Place = { location: { lat: number; lon: number }; label: string; type?: string };
 type RemoteRoute = { coords: [number, number][]; distanceMeters: number; timeSeconds: number };
 type RemoteEvaluation = { sun: { altitude: number; azimuth: number }; baseline: RouteStats | null; cool: RouteStats | null; budgetMet: boolean; detourPct: number; alerts: RouteAlert[] };
-const fmtHour = (h: number) => {
+const fmtHour = (h: number, language: "en" | "hi" = "en") => {
   const hh = Math.floor(h), mm = Math.round((h - hh) * 60);
   const ap = hh >= 12 ? "PM" : "AM";
-  return `${((hh + 11) % 12) + 1}:${String(mm).padStart(2, "0")} ${ap}`;
+  return `${((hh + 11) % 12) + 1}:${String(mm).padStart(2, "0")} ${language === "hi" ? ap === "AM" ? "पूर्वाह्न" : "अपराह्न" : ap}`;
 };
 
 function lineFc(r: RouteStats | null): FC {
@@ -158,6 +159,8 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function RouteCard({ title, color, r }: { title: string; color: string; r: RouteStats | null }) {
+  const { t, language } = useLanguage();
+  const minute = language === "hi" ? "मिनट" : "min";
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -169,12 +172,12 @@ function RouteCard({ title, color, r }: { title: string; color: string; r: Route
       <CardContent>
         {r ? (
           <>
-            <Metric label="Distance" value={`${(r.dist / 1000).toFixed(2)} km`} />
-            <Metric label="Walk time" value={`${r.time.toFixed(1)} min`} />
-            <Metric label="Est. direct sun" value={`${r.heat.toFixed(2)} min`} />
+            <Metric label={t("Distance")} value={`${(r.dist / 1000).toFixed(2)} km`} />
+            <Metric label={t("Walk time")} value={`${r.time.toFixed(1)} ${minute}`} />
+            <Metric label={t("Est. direct sun")} value={`${r.heat.toFixed(2)} ${minute}`} />
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">No route available.</p>
+          <p className="text-sm text-muted-foreground">{t("No route available.")}</p>
         )}
       </CardContent>
     </Card>
@@ -182,23 +185,29 @@ function RouteCard({ title, color, r }: { title: string; color: string; r: Route
 }
 
 function AlertItem({ a }: { a: RouteAlert }) {
+  const { t, language } = useLanguage();
   if (a.code === "uncertain") return null;
   const Icon = a.level === "info" ? Info : AlertTriangle;
   const cls =
     a.level === "error" ? "border-red-500/50 text-red-600 dark:text-red-400"
     : a.level === "warn" ? "border-amber-500/50 text-amber-700 dark:text-amber-300"
     : "border-sky-500/40";
-  const title = { "budget-unmet": "Heat budget exceeded", detour: "Large detour", same: "Routes match", night: "Sun below horizon", "no-route": "No route" }[a.code] ?? "Notice";
+  const title = t(({ "budget-unmet": "Heat budget exceeded", detour: "Large detour", same: "Routes match", night: "Sun below horizon", "no-route": "No route" } as Record<string, string>)[a.code] ?? "Notice");
+  const budget = a.message.match(/The lowest estimate among (\d+) candidates? within 1\.6× the fastest route distance is ([\d.]+) min of direct sun\. That is ([\d.]+) min over your ([\d.]+) min budget/);
+  const message = language === "hi" && budget
+    ? `${budget[1]} उपलब्ध विकल्पों में न्यूनतम अनुमानित सीधी धूप ${budget[2]} मिनट है। यह आपकी ${budget[4]} मिनट की सीमा से ${budget[3]} मिनट अधिक है। निकटतम उपलब्ध विकल्प दिखाया गया है। रवाना होने का समय बदलें या सीमा समायोजित करें।`
+    : t(a.message);
   return (
     <Alert className={cls}>
       <Icon className="h-4 w-4" />
       <AlertTitle>{title}</AlertTitle>
-      <AlertDescription>{a.message}</AlertDescription>
+      <AlertDescription>{message}</AlertDescription>
     </Alert>
   );
 }
 
 export default function CoolRoutePlanner() {
+  const { t, language } = useLanguage();
   const [startPlace, setStartPlace] = React.useState<Place>({ location: { lat: 28.6285, lon: 77.215 }, label: "Connaught Place, New Delhi · start" });
   const [endPlace, setEndPlace] = React.useState<Place>({ location: { lat: 28.6285 + 4 * 0.0009, lon: 77.215 + 5 * 0.00102 }, label: "Connaught Place, New Delhi · destination" });
   const [hour, setHour] = React.useState(13);
@@ -325,13 +334,13 @@ export default function CoolRoutePlanner() {
     <section id="planner" className="mx-auto w-full max-w-7xl scroll-mt-4 px-4 py-10 md:px-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Route planner</h2>
-          <p className="text-sm text-muted-foreground">Set your start and destination, then compare walking routes.</p>
+          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">{t("Route planner")}</h2>
+          <p className="text-sm text-muted-foreground">{t("Set your start and destination, then compare walking routes.")}</p>
         </div>
         {env && (
           <Badge variant="secondary" className="gap-1.5">
             <Sun className="h-3.5 w-3.5" />
-            {env.temperatureC}°C · UV {env.uvIndex}{env.source === "fallback" ? " (estimate)" : ""}
+            {env.temperatureC}°C · UV {env.uvIndex}{env.source === "fallback" ? ` (${t("estimate")})` : ""}
           </Badge>
         )}
       </div>
@@ -339,34 +348,46 @@ export default function CoolRoutePlanner() {
       <div className="grid gap-6 lg:grid-cols-12">
         <div className="space-y-4 lg:col-span-4">
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Locations</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-base">{t("Locations")}</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <label className={`block space-y-1 rounded-lg p-2 text-sm ${activeEndpoint === "start" ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}><span className="font-medium">Search location</span><span className="flex items-center gap-2 rounded-md border border-input px-3"><MapPin className="h-4 w-4 shrink-0 text-indigo-500" /><input value={searchStart} onFocus={() => setActiveEndpoint("start")} onChange={(e) => setSearchStart(e.target.value)} className="h-11 min-w-0 flex-1 bg-transparent outline-none" placeholder="e.g. India Gate, New Delhi" /></span><span className="mt-1 block truncate text-xs text-muted-foreground">Selected: {startPlace.label}</span><button type="button" disabled={searching || !searchStart.trim()} onClick={() => void searchPlaces("start")} className="mt-2 min-h-10 rounded-md border px-3 text-sm disabled:opacity-50">Search starting place</button>{startResults.length > 0 && <div className="mt-2 max-h-48 space-y-1 overflow-auto rounded-md border p-1" role="listbox" aria-label="Starting place results">{startResults.map((place, index) => <button type="button" role="option" aria-selected={false} key={`${place.label}-${index}`} onClick={() => mapPickRef.current(place)} className="block min-h-11 w-full rounded px-2 py-1 text-left text-xs hover:bg-muted"><span className="block font-medium">{place.label.split(",").slice(0, 2).join(",")}</span><span className="text-muted-foreground">{place.type} · click to pin and calculate</span></button>)}</div>}</label>
-                <label className={`block space-y-1 rounded-lg p-2 text-sm ${activeEndpoint === "end" ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}><span className="font-medium">Destination location</span><span className="flex items-center gap-2 rounded-md border border-input px-3"><MapPin className="h-4 w-4 shrink-0 text-cyan-600" /><input value={searchEnd} onFocus={() => setActiveEndpoint("end")} onChange={(e) => setSearchEnd(e.target.value)} className="h-11 min-w-0 flex-1 bg-transparent outline-none" placeholder="e.g. Jantar Mantar, New Delhi" /></span><span className="mt-1 block truncate text-xs text-muted-foreground">Selected: {endPlace.label}</span><button type="button" disabled={searching || !searchEnd.trim()} onClick={() => void searchPlaces("end")} className="mt-2 min-h-10 rounded-md border px-3 text-sm disabled:opacity-50">Search destination</button>{endResults.length > 0 && <div className="mt-2 max-h-48 space-y-1 overflow-auto rounded-md border p-1" role="listbox" aria-label="Destination results">{endResults.map((place, index) => <button type="button" role="option" aria-selected={false} key={`${place.label}-${index}`} onClick={() => mapPickRef.current(place)} className="block min-h-11 w-full rounded px-2 py-1 text-left text-xs hover:bg-muted"><span className="block font-medium">{place.label.split(",").slice(0, 2).join(",")}</span><span className="text-muted-foreground">{place.type} · click to pin and calculate</span></button>)}</div>}</label>
-              <p className="text-xs text-muted-foreground">Pick a search result, or choose an endpoint above and click any point on the map. Walking directions follow OpenStreetMap paths.</p>
+                <label className={`block space-y-1 rounded-lg p-2 text-sm ${activeEndpoint === "start" ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}>
+                  <span className="font-medium">{t("Search location")}</span>
+                  <span className="flex items-center gap-2 rounded-md border border-input px-3"><MapPin className="h-4 w-4 shrink-0 text-indigo-500" /><input value={searchStart} onFocus={() => setActiveEndpoint("start")} onChange={(e) => setSearchStart(e.target.value)} className="h-11 min-w-0 flex-1 bg-transparent outline-none" placeholder={t("e.g. India Gate, New Delhi")} /></span>
+                  <span className="mt-1 block truncate text-xs text-muted-foreground">{t("Selected: ")}{startPlace.label.replace(" · start", ` · ${t("start")}`)}</span>
+                  <button type="button" disabled={searching || !searchStart.trim()} onClick={() => void searchPlaces("start")} className="mt-2 min-h-10 rounded-md border px-3 text-sm disabled:opacity-50">{t(searching ? "Searching…" : "Search starting place")}</button>
+                  {startResults.length > 0 && <div className="mt-2 max-h-48 space-y-1 overflow-auto rounded-md border p-1" role="listbox" aria-label={t("Starting place results")}>{startResults.map((place, index) => <button type="button" role="option" aria-selected={false} key={`${place.label}-${index}`} onClick={() => mapPickRef.current(place)} className="block min-h-11 w-full rounded px-2 py-1 text-left text-xs hover:bg-muted"><span className="block font-medium">{place.label.split(",").slice(0, 2).join(",")}</span><span className="text-muted-foreground">{t(place.type ?? "Place")} · {t("click to pin and calculate")}</span></button>)}</div>}
+                </label>
+                <label className={`block space-y-1 rounded-lg p-2 text-sm ${activeEndpoint === "end" ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}>
+                  <span className="font-medium">{t("Destination location")}</span>
+                  <span className="flex items-center gap-2 rounded-md border border-input px-3"><MapPin className="h-4 w-4 shrink-0 text-cyan-600" /><input value={searchEnd} onFocus={() => setActiveEndpoint("end")} onChange={(e) => setSearchEnd(e.target.value)} className="h-11 min-w-0 flex-1 bg-transparent outline-none" placeholder={t("e.g. Jantar Mantar, New Delhi")} /></span>
+                  <span className="mt-1 block truncate text-xs text-muted-foreground">{t("Selected: ")}{endPlace.label.replace(" · destination", ` · ${t("destination")}`)}</span>
+                  <button type="button" disabled={searching || !searchEnd.trim()} onClick={() => void searchPlaces("end")} className="mt-2 min-h-10 rounded-md border px-3 text-sm disabled:opacity-50">{t(searching ? "Searching…" : "Search destination")}</button>
+                  {endResults.length > 0 && <div className="mt-2 max-h-48 space-y-1 overflow-auto rounded-md border p-1" role="listbox" aria-label={t("Destination results")}>{endResults.map((place, index) => <button type="button" role="option" aria-selected={false} key={`${place.label}-${index}`} onClick={() => mapPickRef.current(place)} className="block min-h-11 w-full rounded px-2 py-1 text-left text-xs hover:bg-muted"><span className="block font-medium">{place.label.split(",").slice(0, 2).join(",")}</span><span className="text-muted-foreground">{t(place.type ?? "Place")} · {t("click to pin and calculate")}</span></button>)}</div>}
+                </label>
+              <p className="text-xs text-muted-foreground">{t("Pick a search result, or choose an endpoint above and click any point on the map. Walking directions follow OpenStreetMap paths.")}</p>
                 {searchError && <p aria-live="polite" className="text-xs text-muted-foreground">{searchError}</p>}
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Scenario</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-base">{t("Scenario")}</CardTitle></CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <div className="mb-2 flex justify-between text-sm"><span>Time of day</span><span className="font-medium tabular-nums">{fmtHour(hour)}</span></div>
-                <Slider min={6} max={19} step={0.25} value={[hour]} onValueChange={(v) => setHour(v[0])} aria-label="Time of day" />
-                <p className="mt-1 text-xs text-muted-foreground">Sun altitude {Math.max(0, Math.round(ev.sun.altitude * 180 / Math.PI))}°</p>
+                <div className="mb-2 flex justify-between text-sm"><span>{t("Time of day")}</span><span className="font-medium tabular-nums">{fmtHour(hour, language)}</span></div>
+                <Slider min={6} max={19} step={0.25} value={[hour]} onValueChange={(v) => setHour(v[0])} aria-label={t("Time of day")} />
+                <p className="mt-1 text-xs text-muted-foreground">{t("Sun altitude ")}{Math.max(0, Math.round(ev.sun.altitude * 180 / Math.PI))}°</p>
               </div>
               <div>
-                <div className="mb-2 flex justify-between text-sm"><span>Shade availability</span><span className="font-medium tabular-nums">×{shadeMult.toFixed(2)}</span></div>
-                <Slider min={0.3} max={1.5} step={0.05} value={[shadeMult]} onValueChange={(v) => setShadeMult(v[0])} aria-label="Shade availability multiplier" />
+                <div className="mb-2 flex justify-between text-sm"><span>{t("Shade availability")}</span><span className="font-medium tabular-nums">×{shadeMult.toFixed(2)}</span></div>
+                <Slider min={0.3} max={1.5} step={0.05} value={[shadeMult]} onValueChange={(v) => setShadeMult(v[0])} aria-label={t("Shade availability multiplier")} />
               </div>
               <div>
-                <div className="mb-2 flex justify-between text-sm"><span>Heat-exposure budget</span><span className="font-medium tabular-nums">{budgetMin.toFixed(2)} min</span></div>
-                <Slider min={0} max={15} step={0.25} value={[budgetMin]} onValueChange={(v) => setBudgetMin(v[0])} aria-label="Heat exposure budget in minutes" />
+                <div className="mb-2 flex justify-between text-sm"><span>{t("Heat-exposure budget")}</span><span className="font-medium tabular-nums">{budgetMin.toFixed(2)} {language === "hi" ? "मिनट" : "min"}</span></div>
+                <Slider min={0} max={15} step={0.25} value={[budgetMin]} onValueChange={(v) => setBudgetMin(v[0])} aria-label={t("Heat exposure budget in minutes")} />
               </div>
               <label className="flex items-center justify-between gap-3 text-sm">
-                <span>Step-free access <span className="block text-xs text-muted-foreground">Hard constraint: avoids stairs</span></span>
+                <span>{t("Step-free access")} <span className="block text-xs text-muted-foreground">{t("Hard constraint: avoids stairs")}</span></span>
                 <Switch checked={stepFree} onCheckedChange={setStepFree} />
               </label>
             </CardContent>
@@ -377,41 +398,41 @@ export default function CoolRoutePlanner() {
 
         <div className="space-y-4 lg:col-span-8">
           <div className="overflow-hidden rounded-xl border border-border">
-            <div className="flex flex-wrap gap-2 border-b border-border bg-card p-3" aria-label="Map view">
+            <div className="flex flex-wrap gap-2 border-b border-border bg-card p-3" aria-label={t("Map view")}>
               {([ ["normal", "Normal", SunDim], ["satellite", "Satellite", Satellite] ] as const).map(([mode, label, Icon]) => (
-                <button key={mode} type="button" onClick={() => setMapMode(mode)} aria-pressed={mapMode === mode} className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium transition ${mapMode === mode ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted"}`}><Icon className="h-4 w-4" />{label}</button>
+                <button key={mode} type="button" onClick={() => setMapMode(mode)} aria-pressed={mapMode === mode} className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium transition ${mapMode === mode ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted"}`}><Icon className="h-4 w-4" />{t(label)}</button>
               ))}
             </div>
             <div ref={mapEl} className="h-[380px] w-full cursor-crosshair md:h-[480px] lg:h-[540px]" />
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span>{mapMode === "normal" ? "Normal street view · © OpenStreetMap contributors" : "Satellite imagery © Esri and contributors"}</span>
-            <span>Walking routes © OpenStreetMap · Valhalla</span>
+            <span>{mapMode === "normal" ? `${t("Normal street view")} · © OpenStreetMap ${t("contributors")}` : t("Satellite imagery © Esri and contributors")}</span>
+            <span>{t("Walking routes © OpenStreetMap · Valhalla")}</span>
           </div>
-          <p aria-live="polite" className="text-sm text-muted-foreground">{routeLoading ? "Calculating real walking routes…" : routeError}</p>
+          <p aria-live="polite" className="text-sm text-muted-foreground">{routeLoading ? t("Calculating real walking routes…") : t(routeError)}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <span><b style={{ color: "#1e3a8a" }}>━</b> Fastest</span>
-            <span><b style={{ color: "#7dd3fc" }}>━</b> CoolRoute shade-aware route</span>
+            <span><b style={{ color: "#1e3a8a" }}>━</b> {t("Fastest")}</span>
+            <span><b style={{ color: "#7dd3fc" }}>━</b> {t("CoolRoute shade-aware route")}</span>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <RouteCard title="Fastest walking route" color="#1e3a8a" r={b} />
-            <RouteCard title="CoolRoute" color="#7dd3fc" r={c} />
+            <RouteCard title={t("Fastest walking route")} color="#1e3a8a" r={b} />
+            <RouteCard title={t("CoolRoute")} color="#7dd3fc" r={c} />
           </div>
 
           {b && c && (
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-base">Trade-offs</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-base">{t("Trade-offs")}</CardTitle></CardHeader>
               <CardContent className="grid gap-3 text-sm sm:grid-cols-3">
-                <div><div className="text-2xl font-semibold tabular-nums">{ev.detourPct >= 0 ? "+" : ""}{ev.detourPct.toFixed(0)}%</div><div className="text-muted-foreground">distance added</div></div>
-                <div><div className="text-2xl font-semibold tabular-nums">{dTime >= 0 ? "+" : ""}{dTime.toFixed(1)} min</div><div className="text-muted-foreground">time difference</div></div>
-                <div><div className="text-2xl font-semibold tabular-nums">{Math.abs(exposureDifference).toFixed(2)} min</div><div className="text-muted-foreground">{exposureDifference > 0.005 ? "sun exposure saved" : exposureDifference < -0.005 ? "more exposure on CoolRoute" : "same estimated exposure"}</div></div>
+                <div><div className="text-2xl font-semibold tabular-nums">{ev.detourPct >= 0 ? "+" : ""}{ev.detourPct.toFixed(0)}%</div><div className="text-muted-foreground">{t("distance added")}</div></div>
+                <div><div className="text-2xl font-semibold tabular-nums">{dTime >= 0 ? "+" : ""}{dTime.toFixed(1)} {language === "hi" ? "मिनट" : "min"}</div><div className="text-muted-foreground">{t("time difference")}</div></div>
+                <div><div className="text-2xl font-semibold tabular-nums">{Math.abs(exposureDifference).toFixed(2)} {language === "hi" ? "मिनट" : "min"}</div><div className="text-muted-foreground">{t(exposureDifference > 0.005 ? "sun exposure saved" : exposureDifference < -0.005 ? "more exposure on CoolRoute" : "same estimated exposure")}</div></div>
               </CardContent>
             </Card>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4 text-sm"><span>See the formulas and assumptions behind this estimate.</span><Link href={`/formulas?time=${hour}&shade=${shadeMult}&budget=${budgetMin}&distance=${Math.round(c?.dist ?? 0)}&walkTime=${(c?.time ?? 0).toFixed(1)}&exposure=${(c?.heat ?? 0).toFixed(2)}&tz=${encodeURIComponent(timeZone)}`} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-4 font-medium text-primary-foreground"><Sun className="h-4 w-4" />Formulas</Link></div>
-          <p className="text-xs text-muted-foreground">Heat exposure is a model estimate from solar position and shade assumptions. It is not a personal medical risk assessment.</p>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4 text-sm"><span>{t("See the formulas and assumptions behind this estimate.")}</span><Link href={`/formulas?time=${hour}&shade=${shadeMult}&budget=${budgetMin}&distance=${Math.round(c?.dist ?? 0)}&walkTime=${(c?.time ?? 0).toFixed(1)}&exposure=${(c?.heat ?? 0).toFixed(2)}&tz=${encodeURIComponent(timeZone)}`} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-4 font-medium text-primary-foreground"><Sun className="h-4 w-4" />{t("Formulas")}</Link></div>
+          <p className="text-xs text-muted-foreground">{t("Heat exposure is a model estimate from solar position and shade assumptions. It is not a personal medical risk assessment.")}</p>
         </div>
       </div>
     </section>

@@ -1,0 +1,243 @@
+"use client";
+
+import * as React from "react";
+import { usePathname } from "next/navigation";
+
+export type Language = "en" | "hi";
+
+const hi: Record<string, string> = {
+  "Switch language to Hindi": "भाषा हिंदी में बदलें",
+  "Switch language to English": "भाषा अंग्रेज़ी में बदलें",
+  "An account with this email already exists in this browser.": "इस ईमेल से इस ब्राउज़र में पहले से खाता मौजूद है।",
+  "Email or password is incorrect.": "ईमेल या पासवर्ड गलत है।",
+  "Already walking with us?": "क्या आप पहले से हमारे साथ हैं?",
+  "New to CoolRoute?": "CoolRoute पर नए हैं?",
+  "Log in": "लॉग इन",
+  "Sign up": "साइन अप",
+  "Switch to light mode": "लाइट मोड पर जाएँ",
+  "Switch to dark mode": "डार्क मोड पर जाएँ",
+  "Light mode": "लाइट मोड",
+  "Dark mode": "डार्क मोड",
+  "Take the cooler way": "ठंडक भरा रास्ता चुनें",
+  "A little more shade.": "थोड़ी और छाँव।",
+  "A better way there.": "मंज़िल तक पहुँचने का बेहतर तरीका।",
+  "Plan a walk around shade, sunlight and your comfort.": "छाँव, धूप और अपने आराम को ध्यान में रखकर पैदल रास्ता तय करें।",
+  "Built for the walk ahead": "आपकी अगली पैदल यात्रा के लिए",
+  "Create your account": "अपना खाता बनाएँ",
+  "Welcome back": "वापसी पर स्वागत है",
+  "Find your way in.": "अपनी राह खोजें।",
+  "Let’s get there.": "चलें, मंज़िल तक पहुँचें।",
+  "A cooler walk starts with a few details.": "आरामदायक पैदल यात्रा के लिए कुछ जानकारी दें।",
+  "Sign in to plan your next walk.": "अपनी अगली पैदल यात्रा की योजना बनाने के लिए साइन इन करें।",
+  "Your name": "आपका नाम",
+  "Alex Morgan": "उदाहरण: आरव शर्मा",
+  "Email address": "ईमेल पता",
+  "Password": "पासवर्ड",
+  "At least 8 characters": "कम से कम 8 अक्षर",
+  "Enter your password": "अपना पासवर्ड दर्ज करें",
+  "Hide password": "पासवर्ड छिपाएँ",
+  "Show password": "पासवर्ड दिखाएँ",
+  "Please wait…": "कृपया प्रतीक्षा करें…",
+  "Create account": "खाता बनाएँ",
+  "Sign in": "साइन इन",
+  "Already have an account? ": "पहले से खाता है? ",
+  "New here? ": "यहाँ नए हैं? ",
+  "We couldn't complete that request.": "यह अनुरोध पूरा नहीं हो सका।",
+  "Opening CoolRoute…": "CoolRoute खुल रहा है…",
+  "Valid start and destination coordinates are required.": "शुरुआती और मंज़िल के मान्य निर्देशांक आवश्यक हैं।",
+  "No walkable route could be found between these points.": "इन स्थानों के बीच पैदल चलने योग्य रास्ता नहीं मिला।",
+  "The routing service returned no usable walking paths.": "रूटिंग सेवा से कोई उपयोगी पैदल रास्ता नहीं मिला।",
+  "Real-world walking route service is unavailable. Please try again shortly.": "वास्तविक पैदल रास्ता सेवा उपलब्ध नहीं है। कृपया थोड़ी देर बाद फिर कोशिश करें।",
+  "A place query is required.": "जगह खोजने के लिए नाम दर्ज करें।",
+  "Place search is unavailable.": "जगह खोज सेवा उपलब्ध नहीं है।",
+  "Place not found.": "जगह नहीं मिली।",
+  "Valid latitude and longitude are required.": "मान्य अक्षांश और देशांतर आवश्यक हैं।",
+  "Invalid route geometry.": "रास्ते का नक्शा डेटा अमान्य है।",
+  "Local prototype access: accounts stay in this browser. Don’t reuse a password from another service.": "यह स्थानीय प्रोटोटाइप है: खाते इसी ब्राउज़र में रहते हैं। किसी दूसरी सेवा का पासवर्ड यहाँ इस्तेमाल न करें।",
+  "Sign out": "साइन आउट",
+  " — back to home": " — होम पर वापस जाएँ",
+  "A cooler way to get there": "मंज़िल तक पहुँचने का ठंडक भरा रास्ता",
+  "Walk in the": "रास्ते पर चलें",
+  "living shade.": "जीवंत छाँव में।",
+  "Plan a walk": "पैदल यात्रा की योजना बनाएँ",
+  "Route planner": "रास्ता योजनाकार",
+  "Set your start and destination, then compare walking routes.": "शुरुआती जगह और मंज़िल चुनें, फिर पैदल रास्तों की तुलना करें।",
+  "Locations": "स्थान",
+  "Search location": "स्थान खोजें",
+  "Destination location": "मंज़िल का स्थान",
+  "e.g. India Gate, New Delhi": "जैसे: इंडिया गेट, नई दिल्ली",
+  "e.g. Jantar Mantar, New Delhi": "जैसे: जंतर मंतर, नई दिल्ली",
+  "Selected: ": "चयनित: ",
+  "contributors": "योगदानकर्ता",
+  "start": "शुरुआत",
+  "destination": "मंज़िल",
+  "Place": "जगह",
+  "estimate": "अनुमान",
+  "city": "शहर",
+  "town": "कस्बा",
+  "village": "गाँव",
+  "street": "सड़क",
+  "neighbourhood": "पड़ोस",
+  "house": "मकान",
+  "locality": "इलाका",
+  "administrative": "प्रशासनिक क्षेत्र",
+  "suburb": "उपनगर",
+  "road": "सड़क",
+  "Searching…": "खोज जारी है…",
+  "click to pin and calculate": "चुनने और गणना करने के लिए क्लिक करें",
+  "Search starting place": "शुरुआती जगह खोजें",
+  "Search destination": "मंज़िल खोजें",
+  "Starting place results": "शुरुआती जगह के परिणाम",
+  "Destination results": "मंज़िल के परिणाम",
+  " · click to pin and calculate": " · चुनने और गणना करने के लिए क्लिक करें",
+  "Pick a search result, or choose an endpoint above and click any point on the map. Walking directions follow OpenStreetMap paths.": "खोज परिणाम चुनें, या ऊपर शुरुआती/मंज़िल चुनकर नक्शे पर किसी जगह क्लिक करें। पैदल रास्ते OpenStreetMap मार्गों का अनुसरण करते हैं।",
+  "Scenario": "परिदृश्य",
+  "Time of day": "दिन का समय",
+  "Sun altitude ": "सूर्य की ऊँचाई ",
+  "Shade availability": "छाँव की उपलब्धता",
+  "Shade availability multiplier": "छाँव उपलब्धता गुणक",
+  "Heat-exposure budget": "धूप में रहने की अधिकतम सीमा",
+  "Heat exposure budget in minutes": "मिनटों में धूप की अधिकतम सीमा",
+  "Step-free access": "सीढ़ियों से मुक्त रास्ता",
+  "Hard constraint: avoids stairs": "ज़रूरी शर्त: सीढ़ियों से बचें",
+  "Map view": "नक्शा दृश्य",
+  "Normal": "सामान्य",
+  "Satellite": "उपग्रह",
+  "Normal street view · © OpenStreetMap contributors": "सामान्य सड़क दृश्य · © OpenStreetMap योगदानकर्ता",
+  "Satellite imagery © Esri and contributors": "उपग्रह चित्र © Esri और योगदानकर्ता",
+  "Walking routes © OpenStreetMap · Valhalla": "पैदल मार्ग © OpenStreetMap · Valhalla",
+  "Fastest": "सबसे तेज़",
+  "Normal street view": "सामान्य सड़क दृश्य",
+  "CoolRoute shade-aware route": "CoolRoute छाँव-अनुकूल रास्ता",
+  "Fastest walking route": "सबसे तेज़ पैदल रास्ता",
+  "CoolRoute": "CoolRoute",
+  "Distance": "दूरी",
+  "Walk time": "पैदल समय",
+  "Est. direct sun": "अनुमानित सीधी धूप",
+  "No route available.": "कोई रास्ता उपलब्ध नहीं है।",
+  "Trade-offs": "समझौते",
+  "distance added": "अतिरिक्त दूरी",
+  "time difference": "समय का अंतर",
+  "sun exposure saved": "धूप में रहने का समय बचा",
+  "more exposure on CoolRoute": "CoolRoute पर अधिक धूप",
+  "same estimated exposure": "धूप का अनुमान समान",
+  "See the formulas and assumptions behind this estimate.": "इस अनुमान के सूत्र और मान्यताएँ देखें।",
+  "Formulas": "सूत्र",
+  "Heat exposure is a model estimate from solar position and shade assumptions. It is not a personal medical risk assessment.": "धूप का अनुमान सूर्य की स्थिति और छाँव संबंधी मान्यताओं पर आधारित है। यह व्यक्तिगत चिकित्सा जोखिम आकलन नहीं है।",
+  "Heat budget exceeded": "धूप की सीमा पार हुई",
+  "Large detour": "काफ़ी लंबा वैकल्पिक रास्ता",
+  "Routes match": "रास्ते समान हैं",
+  "Sun below horizon": "सूर्य क्षितिज के नीचे है",
+  "No route": "कोई रास्ता नहीं",
+  "Notice": "सूचना",
+  "Current route estimate": "वर्तमान रास्ते का अनुमान",
+  "Walking distance": "पैदल दूरी",
+  "Estimated walk time": "पैदल समय का अनुमान",
+  "Estimated direct sun": "सीधी धूप का अनुमान",
+  "Departure time": "रवाना होने का समय",
+  "Exposure budget": "धूप की सीमा",
+  "Direct-sun exposure calculation": "सीधी धूप की गणना",
+  "How the route and budget are handled": "रास्ते और सीमा की गणना कैसे होती है",
+  "The route is divided into map segments. Each segment gets a share of the route’s total walking time based on its geodesic length. Sun position is evaluated at that segment’s midpoint and estimated time during the walk.": "रास्ते को नक्शे के हिस्सों में बाँटा जाता है। हर हिस्से की भौगोलिक लंबाई के आधार पर उसे कुल पैदल समय का हिस्सा दिया जाता है। उस हिस्से के मध्य बिंदु और अनुमानित समय पर सूर्य की स्थिति की गणना होती है।",
+  "The building term uses a simplified 10 m building height and 10 m street-width baseline. The canopy multiplier starts from an assumed 25% coverage. OpenStreetMap route geometry does not report actual tree cover or building heights, so these are estimates for comparing the returned routes, not measured shade or a personal medical risk score.": "इमारतों के अनुमान में 10 मीटर ऊँचाई और 10 मीटर सड़क चौड़ाई मानी गई है। पेड़ों की छाँव 25% मानकर शुरू होती है। OpenStreetMap में वास्तविक पेड़ों या इमारतों की ऊँचाई का डेटा नहीं है, इसलिए ये लौटाए गए रास्तों की तुलना के अनुमान हैं—मापी हुई छाँव या व्यक्तिगत चिकित्सा जोखिम का आकलन नहीं।",
+  "Fastest route:": "सबसे तेज़ रास्ता:",
+  "the route with the shortest estimated walking time from the pedestrian route service.": "पैदल मार्ग सेवा द्वारा लौटाया गया सबसे कम अनुमानित समय वाला रास्ता।",
+  "CoolRoute:": "CoolRoute:",
+  "among the returned alternatives no more than 1.6× the fastest route distance, it selects a route within your exposure budget when one is available. If none fit, it shows the lowest-exposure candidate and reports how far that estimate exceeds your budget.": "लौटाए गए उन विकल्पों में, जो सबसे तेज़ रास्ते से 1.6 गुना से अधिक दूर नहीं हैं, CoolRoute आपकी धूप की सीमा में आने वाला रास्ता चुनता है। ऐसा रास्ता न मिले तो यह सबसे कम धूप वाला विकल्प दिखाकर बताता है कि अनुमान आपकी सीमा से कितना अधिक है।",
+  "The budget is a route-selection target. The available alternatives may not contain a route that meets it; the app reports the closest candidate instead of claiming the budget was met.": "यह सीमा रास्ता चुनने का लक्ष्य है। उपलब्ध विकल्पों में इसके भीतर रास्ता न भी हो सकता है; ऐप सीमा पूरी होने का दावा करने के बजाय निकटतम विकल्प दिखाता है।",
+  "Back to planner": "योजनाकार पर वापस जाएँ",
+  "CoolRoute model": "CoolRoute मॉडल",
+  "How the route is calculated": "रास्ते की गणना कैसे होती है",
+  "Real pedestrian paths, distances and travel times with modeled shade exposure for the selected route.": "चुने हुए रास्ते के वास्तविक पैदल मार्ग, दूरी और समय के साथ अनुमानित छाँव और धूप का विवरण।",
+  "Walking paths use OpenStreetMap pedestrian data through Valhalla. Exposure is estimated from solar position and simplified shade assumptions, not measured tree or building data.": "पैदल मार्ग Valhalla के ज़रिए OpenStreetMap डेटा का उपयोग करते हैं। धूप का अनुमान सूर्य की स्थिति और सरल छाँव मान्यताओं से लगाया जाता है, पेड़ों या इमारतों के मापे हुए डेटा से नहीं।",
+  "Back to home": "होम पर वापस जाएँ",
+  "Could not calculate a walking route.": "पैदल रास्ते की गणना नहीं हो सकी।",
+  "No matching places found.": "इससे मेल खाती जगह नहीं मिली।",
+  "Place search failed. Please try again.": "जगह खोजने में समस्या हुई। फिर कोशिश करें।",
+  "Calculating real walking routes…": "वास्तविक पैदल रास्तों की गणना हो रही है…",
+  "The available walking routes have the same geometry for this trip.": "इस यात्रा के लिए उपलब्ध पैदल रास्तों का आकार समान है।",
+  "The sun is below the horizon, so modeled sun exposure is zero.": "सूर्य क्षितिज के नीचे है, इसलिए अनुमानित सीधी धूप शून्य है।",
+  "Log in | CoolRoute": "लॉग इन | CoolRoute",
+  "Sign up | CoolRoute": "साइन अप | CoolRoute",
+  "A Cooler Way to Get There | CoolRoute": "मंज़िल तक पहुँचने का ठंडक भरा रास्ता | CoolRoute",
+  "Route Planner | CoolRoute": "रास्ता योजनाकार | CoolRoute",
+  "Route formulas | CoolRoute": "रास्ते के सूत्र | CoolRoute",
+  "Math & Graph Architecture | CoolRoute": "गणित और ग्राफ़ संरचना | CoolRoute",
+  "Math & graph architecture": "गणित और ग्राफ़ संरचना",
+  "How CoolRoute turns streets, sun position and slope into a route that respects a heat-exposure budget.": "CoolRoute सड़कों, सूर्य की स्थिति और ढलान के आधार पर धूप की सीमा का पालन करने वाला रास्ता कैसे चुनता है।",
+  "1. Graph model": "1. ग्राफ़ मॉडल",
+  "The neighbourhood is a graph G = (V, E). Nodes V are junctions and crossings, each with a crossing wait time (seconds) and a junction shade value. Edges E are street segments with length, tree canopy share C, building height H, street orientation θ, slope grade and a step-free flag.": "इलाके को ग्राफ़ G = (V, E) के रूप में दर्शाया जाता है। नोड V चौराहे और क्रॉसिंग हैं, जिनमें प्रतीक्षा समय (सेकंड) और छाँव का मान होता है। एज E सड़क के हिस्से हैं, जिनमें लंबाई, पेड़ों की छाँव C, इमारत की ऊँचाई H, सड़क की दिशा θ, ढलान और सीढ़ी-मुक्त होने की जानकारी होती है।",
+  "2. Walking effort (Tobler)": "2. पैदल चलने का प्रयास (टोब्लर)",
+  "Uphill segments take longer and add an effort multiplier to heat. Downhill segments are not given a bonus beyond speed.": "चढ़ाई वाले हिस्सों में अधिक समय लगता है और धूप की गणना में प्रयास गुणक जुड़ता है। ढलान वाले रास्ते को गति के अलावा अतिरिक्त लाभ नहीं दिया जाता।",
+  "3. Solar geometry and shade": "3. सूर्य की स्थिति और छाँव",
+  "Solar altitude α and azimuth φ come from SunCalc for the chosen time of day. Building shadow and combined shade:": "चुने हुए समय के लिए सूर्य की ऊँचाई α और दिगंश φ SunCalc से लिए जाते हैं। इमारत की छाया और कुल छाँव:",
+  "Trees and buildings are treated as independent shade sources. The 0.15 floor on tan α stops the shadow length from blowing up when the sun is low. When the sun is below the horizon, exposure is zero.": "पेड़ों और इमारतों को छाँव के अलग-अलग स्रोत माना जाता है। tan α पर 0.15 की न्यूनतम सीमा, सूर्य नीचे होने पर छाया की लंबाई को अत्यधिक बढ़ने से रोकती है। सूर्य क्षितिज के नीचे हो तो धूप का अनुमान शून्य होता है।",
+  "4. Heat exposure cost": "4. धूप में रहने की लागत",
+  "The first term is time spent in direct sun, scaled by effort. The second is the crossing wait W_v at the destination junction, scaled by its shade S_v. Costs are reported in minutes of modelled sun exposure.": "पहला पद प्रयास के अनुसार सीधे धूप में बिताए समय को दर्शाता है। दूसरा पद मंज़िल के चौराहे पर प्रतीक्षा W_v को वहाँ की छाँव S_v के अनुसार दर्शाता है। लागत अनुमानित धूप के मिनटों में दी जाती है।",
+  "5. Constrained shortest path": "5. सीमा के भीतर सबसे छोटा रास्ता",
+  "The CoolRoute minimises walking time subject to total heat exposure being at most the user's budget B. This is a resource-constrained shortest path problem. Each node keeps a Pareto set of (time, heat) labels. A label is discarded if its heat exceeds B or if another label at the same node is no worse in both time and heat. The first label to reach the destination, taken in order of increasing time, is optimal.": "CoolRoute कुल धूप को उपयोगकर्ता की सीमा B के भीतर रखते हुए पैदल समय कम करता है। यह संसाधन-सीमित सबसे छोटे रास्ते की समस्या है। हर नोड समय और धूप के (time, heat) विकल्पों का सेट रखता है। धूप B से बढ़ने पर या उसी नोड पर किसी दूसरे विकल्प से समय और धूप दोनों में खराब होने पर विकल्प हट जाता है। बढ़ते समय के क्रम में मंज़िल तक पहुँचने वाला पहला विकल्प सर्वोत्तम होता है।",
+  "If no label reaches the destination, the budget is infeasible. CoolRoute then shows the route with the lowest total heat and raises a banner, instead of failing silently.": "यदि कोई विकल्प मंज़िल तक नहीं पहुँचता, तो सीमा पूरी करना संभव नहीं है। ऐसी स्थिति में CoolRoute चुपचाप विफल होने के बजाय सबसे कम धूप वाला रास्ता और सूचना दिखाता है।",
+  "6. Uncertainty and limits": "6. अनिश्चितता और सीमाएँ",
+  "Shade is estimated from the demo network’s simplified tree canopy and building geometry.": "छाँव का अनुमान डेमो नेटवर्क में पेड़ों और इमारतों की सरल ज्यामिति से लगाया जाता है।",
+  "A detour above 25% added distance raises a warning.": "25% से अधिक अतिरिक्त दूरी होने पर चेतावनी दिखाई जाती है।",
+  "Step-free access is a hard constraint: stairs are removed from the graph, not penalised.": "सीढ़ी-मुक्त रास्ता एक अनिवार्य शर्त है: सीढ़ियों को ग्राफ़ से हटाया जाता है, केवल दंड नहीं दिया जाता।",
+  "Results are modelled estimates from simplified geometry. They are not a personal medical risk assessment or health advice.": "परिणाम सरल ज्यामिति पर आधारित अनुमान हैं। ये व्यक्तिगत चिकित्सा जोखिम आकलन या स्वास्थ्य सलाह नहीं हैं।",
+  "This route doesn’t lead anywhere.": "यह रास्ता कहीं नहीं जाता।",
+  "The page you wanted is either closed for the day or was never mapped. Let’s reroute you.": "यह पृष्ठ उपलब्ध नहीं है या नक्शे पर दर्ज नहीं है। आइए, आपको वापस सही रास्ते पर ले चलें।",
+  "Back to CoolRoute": "CoolRoute पर वापस जाएँ",
+  "Math & proofs": "गणित और प्रमाण",
+  "Error 404 • Footpath Closed or Unmapped Segment": "त्रुटि 404 • बंद या नक्शे पर दर्ज न हुआ पैदल रास्ता",
+  "This route doesn't lead anywhere.": "यह रास्ता कहीं नहीं जाता।",
+};
+
+type LanguageContextValue = {
+  language: Language;
+  setLanguage: (language: Language) => void;
+  t: (english: string) => string;
+};
+
+const LanguageContext = React.createContext<LanguageContextValue | null>(null);
+
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [language, setLanguageState] = React.useState<Language>("en");
+
+  React.useEffect(() => {
+    const saved = window.localStorage.getItem("coolroute-language");
+    if (saved === "hi" || saved === "en") setLanguageState(saved);
+  }, []);
+
+  const setLanguage = React.useCallback((next: Language) => {
+    setLanguageState(next);
+    window.localStorage.setItem("coolroute-language", next);
+  }, []);
+
+  React.useEffect(() => {
+    document.documentElement.lang = language === "hi" ? "hi" : "en";
+    const titleByPath: Record<string, string> = {
+      "/": "Log in | CoolRoute",
+      "/login": "Log in | CoolRoute",
+      "/signup": "Sign up | CoolRoute",
+      "/welcome": "A Cooler Way to Get There | CoolRoute",
+      "/planner": "Route Planner | CoolRoute",
+      "/formulas": "Route formulas | CoolRoute",
+      "/docs": "Math & Graph Architecture | CoolRoute",
+    };
+    const title = titleByPath[pathname];
+    if (title) document.title = language === "hi" ? hi[title] ?? title : title;
+  }, [language, pathname]);
+
+  const value = React.useMemo<LanguageContextValue>(() => ({
+    language,
+    setLanguage,
+    t: (english) => language === "hi" ? hi[english] ?? english : english,
+  }), [language, setLanguage]);
+
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+}
+
+export function useLanguage() {
+  const context = React.useContext(LanguageContext);
+  if (!context) throw new Error("useLanguage must be used inside LanguageProvider");
+  return context;
+}

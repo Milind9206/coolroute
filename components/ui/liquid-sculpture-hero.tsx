@@ -3,6 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowRight, Moon, Sun } from "lucide-react";
+import { useLanguage } from "@/components/language-provider";
+import LanguageToggle from "@/components/language-toggle";
 
 type Cta = { label: string; href: string };
 
@@ -170,6 +172,7 @@ export default function SculptureHero({
   onThemeChange,
   onSignOut,
 }: SculptureHeroProps) {
+  const { t } = useLanguage();
   const [innerTheme, setInnerTheme] = React.useState<"light" | "dark">("dark");
   const current = theme ?? innerTheme;
   const isDark = current === "dark";
@@ -341,12 +344,13 @@ export default function SculptureHero({
       <nav className="flex items-center justify-between px-6 py-5 md:px-12">
         <div className="flex items-center gap-3">
           <span className={`text-lg font-semibold tracking-tight transition-colors duration-1000 ${isDark ? "text-[#b5e6a2]" : "text-[#10201a]"}`}>{brand}</span>
-          {onSignOut && <button type="button" onClick={onSignOut} className={`rounded-full px-3 py-2 text-sm transition-colors ${isDark ? "text-white/55 hover:bg-white/10 hover:text-white" : "text-black/55 hover:bg-black/5 hover:text-black"}`}>Sign out</button>}
+          {onSignOut && <button type="button" onClick={onSignOut} className={`rounded-full px-3 py-2 text-sm transition-colors ${isDark ? "text-white/55 hover:bg-white/10 hover:text-white" : "text-black/55 hover:bg-black/5 hover:text-black"}`}>{t("Sign out")}</button>}
         </div>
+        <LanguageToggle compact />
         <button
           type="button"
           onClick={toggle}
-          aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label={t(isDark ? "Switch to light mode" : "Switch to dark mode")}
           className={`flex h-12 w-12 items-center justify-center rounded-full border transition-all duration-1000 hover:rotate-12 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/50 ${
             isDark ? "border-white/20 hover:bg-white/10" : "border-black/20 hover:bg-black/5"
           }`}
