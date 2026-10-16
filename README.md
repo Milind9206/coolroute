@@ -2,6 +2,21 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Configure persistent accounts and issue reports
+
+CoolRoute uses Supabase Auth for account credentials and PostgreSQL for user profiles and issue reports. Passwords are handled by Supabase Auth and are never stored by CoolRoute in plain text. Session refresh tokens are kept in an HTTP-only cookie.
+
+1. Create a Supabase project.
+2. In the Supabase SQL Editor, run [`supabase/migrations/20261016000000_persistent_accounts_and_issue_reports.sql`](supabase/migrations/20261016000000_persistent_accounts_and_issue_reports.sql).
+3. Copy `.env.example` to `.env.local` and fill in your project's URL and anon/publishable key from the Supabase API settings. These server-side variables must also be configured in Vercel for a deployed site.
+4. Restart the development server. New accounts will then be available across browsers and devices after sign-in.
+
+Email confirmation follows the setting in Supabase Authentication. If it is enabled, new users must confirm their email before signing in.
+
+The old prototype stored accounts only in one browser. Those accounts do not transfer automatically; create a new account after Supabase is configured.
+
+### Run the app
+
 First, run the development server:
 
 ```bash

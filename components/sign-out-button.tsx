@@ -10,7 +10,7 @@ export default function SignOutButton() {
   return (
     <button
       type="button"
-      onClick={() => { signOutLocal(); router.replace("/"); }}
+      onClick={async () => { await signOutLocal().catch(() => undefined); router.replace("/"); }}
       className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ring/30"
     >
       {t("Sign out")}

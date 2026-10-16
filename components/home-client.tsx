@@ -20,7 +20,7 @@ export default function HomeClient() {
         // Keep the hero's theme switch in sync with the rest of the app.
         theme={mounted ? (resolvedTheme === "light" ? "light" : "dark") : undefined}
         onThemeChange={setTheme}
-        onSignOut={() => { signOutLocal(); router.replace("/"); }}
+        onSignOut={() => { void signOutLocal().catch(() => undefined).finally(() => router.replace("/")); }}
         brand="CoolRoute"
         eyebrow={t("A cooler way to get there")}
         headline={`${t("Walk in the")}\n${t("living shade.")}`}

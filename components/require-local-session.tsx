@@ -11,12 +11,19 @@ export default function RequireLocalSession({ children }: { children: React.Reac
   const [ready, setReady] = React.useState(false);
 
   React.useEffect(() => {
-    if (!getLocalSession()) {
-      const next = `${window.location.pathname}${window.location.search}`;
-      router.replace(`/login?next=${encodeURIComponent(next)}`);
-      return;
-    }
-    setReady(true);
+    let active = true;
+    getLocalSession().then((session) => {
+      if (!active) return;
+      if (!session) {
+        const next = `${window.location.pathname}${window.location.search}`;
+        router.replace(`/login?next=${encodeURIComponent(next)}`);
+        return;
+      }
+      setReady(true);
+    }).catch(() => {
+      if (active) router.replace(`/login?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`);
+    });
+    return () => { active = false; };
   }, [router]);
 
   if (!ready) return <main className="grid min-h-screen place-items-center text-sm text-muted-foreground">{t("Opening CoolRoute…")}</main>;

@@ -29,6 +29,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
   const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [error, setError] = React.useState("");
+  const [notice, setNotice] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const isDark = mounted ? resolvedTheme === "dark" : true;
   const signup = mode === "signup";
@@ -37,7 +38,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
     setMounted(true);
     const next = safeNext(new URLSearchParams(window.location.search).get("next"));
     setDestination(next);
-    if (getLocalSession()) router.replace(next);
+    getLocalSession().then((session) => { if (session) router.replace(next); }).catch(() => undefined);
   }, [router]);
 
   const toggleTheme = () => setTheme(isDark ? "light" : "dark");
@@ -47,9 +48,15 @@ export default function AuthPage({ mode }: AuthPageProps) {
     event.preventDefault();
     setBusy(true);
     setError("");
+    setNotice("");
     try {
-      if (signup) await signUpLocal(name, email, password);
-      else await signInLocal(email, password);
+      if (signup) {
+        const result = await signUpLocal(name, email, password);
+        if (result.confirmationRequired) {
+          setNotice(t(result.message ?? "Check your email to confirm your account, then sign in."));
+          return;
+        }
+      } else await signInLocal(email, password);
       router.push(destination);
     } catch (reason) {
       setError(t(reason instanceof Error ? reason.message : "We couldn't complete that request."));
@@ -107,11 +114,12 @@ export default function AuthPage({ mode }: AuthPageProps) {
               <span className={`mt-2 flex items-center gap-3 rounded-xl border px-4 transition-colors focus-within:border-emerald-500 ${isDark ? "border-white/10 bg-white/[0.04]" : "border-black/10 bg-white/70"}`}><LockKeyhole className={`h-4 w-4 shrink-0 ${isDark ? "text-white/40" : "text-black/40"}`} /><input autoComplete={signup ? "new-password" : "current-password"} required type={showPassword ? "text" : "password"} minLength={signup ? 8 : undefined} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t(signup ? "At least 8 characters" : "Enter your password")} className="h-12 w-full bg-transparent outline-none placeholder:text-muted-foreground" /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={t(showPassword ? "Hide password" : "Show password")} className="text-muted-foreground">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></span>
             </label>
             {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
+            {notice && <p role="status" className="text-sm text-emerald-500">{notice}</p>}
             <button type="submit" disabled={busy} className={`group flex min-h-14 w-full items-center justify-center gap-2 rounded-xl text-base font-semibold transition-all duration-500 hover:gap-4 disabled:cursor-wait disabled:opacity-60 ${isDark ? "bg-emerald-300 text-[#07100d] hover:bg-emerald-200" : "bg-emerald-800 text-white hover:bg-emerald-700"}`}>
               {t(busy ? "Please wait…" : signup ? "Create account" : "Sign in")} {!busy && <ArrowRight className="h-5 w-5" />}
             </button>
           </form>
-          <p className={`mt-7 text-center text-xs leading-relaxed ${isDark ? "text-white/40" : "text-black/45"}`}>{t("Local prototype access: accounts stay in this browser. Don’t reuse a password from another service.")}</p>
+          <p className={`mt-7 text-center text-xs leading-relaxed ${isDark ? "text-white/40" : "text-black/45"}`}>{t("Your account is securely stored and can be used across your devices.")}</p>
           <p className={`mt-5 text-center text-sm sm:hidden ${isDark ? "text-white/55" : "text-black/55"}`}>
             {t(signup ? "Already have an account? " : "New here? ")}<Link className="font-semibold text-emerald-500" href={switchHref}>{t(signup ? "Log in" : "Sign up")}</Link>
           </p>
