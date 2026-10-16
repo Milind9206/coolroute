@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import LanguageToggle from "@/components/language-toggle";
+import ReportIssueToggle from "@/components/report-issue-toggle";
 import { useLanguage } from "@/components/language-provider";
 
 function Formula({ children }: { children: string }) {
@@ -12,7 +13,7 @@ function Formula({ children }: { children: string }) {
 export default function DocsContent() {
   const { t } = useLanguage();
   return <main className="mx-auto max-w-3xl space-y-10 px-6 py-12">
-    <div className="flex items-center justify-between"><Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />{t("Back to planner")}</Link><LanguageToggle compact /></div>
+    <div className="flex items-center justify-between"><Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />{t("Back to planner")}</Link><div className="flex items-center gap-3"><ReportIssueToggle /><LanguageToggle compact /></div></div>
     <header className="space-y-3"><h1 className="text-4xl font-semibold tracking-tight">{t("Math & graph architecture")}</h1><p className="text-muted-foreground">{t("How CoolRoute turns streets, sun position and slope into a route that respects a heat-exposure budget.")}</p></header>
     <section className="space-y-3"><h2 className="text-2xl font-semibold">{t("1. Graph model")}</h2><p>{t("The neighbourhood is a graph G = (V, E). Nodes V are junctions and crossings, each with a crossing wait time (seconds) and a junction shade value. Edges E are street segments with length, tree canopy share C, building height H, street orientation θ, slope grade and a step-free flag.")}</p></section>
     <section className="space-y-3"><h2 className="text-2xl font-semibold">{t("2. Walking effort (Tobler)")}</h2><Formula>{["v = 1.67 · exp(−3.5 · |grade + 0.05|)      (m/s)", "t = length / v", "M_effort = 1 + max(0, grade · 5)"].join("\n")}</Formula><p>{t("Uphill segments take longer and add an effort multiplier to heat. Downhill segments are not given a bonus beyond speed.")}</p></section>

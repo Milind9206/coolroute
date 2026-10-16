@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Moon, Sun } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import LanguageToggle from "@/components/language-toggle";
+import ReportIssueToggle from "@/components/report-issue-toggle";
 
 type Cta = { label: string; href: string };
 
@@ -346,7 +347,7 @@ export default function SculptureHero({
           <span className={`text-lg font-semibold tracking-tight transition-colors duration-1000 ${isDark ? "text-[#b5e6a2]" : "text-[#10201a]"}`}>{brand}</span>
           {onSignOut && <button type="button" onClick={onSignOut} className={`rounded-full px-3 py-2 text-sm transition-colors ${isDark ? "text-white/55 hover:bg-white/10 hover:text-white" : "text-black/55 hover:bg-black/5 hover:text-black"}`}>{t("Sign out")}</button>}
         </div>
-        <LanguageToggle compact />
+        <div className="flex items-center gap-2"><ReportIssueToggle /><LanguageToggle compact /></div>
         <button
           type="button"
           onClick={toggle}

@@ -5,6 +5,7 @@ import { ArrowLeft, Calculator, Sun } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/components/language-provider";
 import LanguageToggle from "@/components/language-toggle";
+import ReportIssueToggle from "@/components/report-issue-toggle";
 
 type Scenario = {
   hour: number;
@@ -46,7 +47,7 @@ combined shade Sᵢ = 1 − (1 − C) × (1 − B)
 estimated direct-sun minutes = Σ [tᵢ × (1 − Sᵢ)] / 60`;
 
   return <main className="mx-auto min-h-screen w-full max-w-4xl px-4 py-6 md:px-8">
-    <header className="mb-10 flex items-center justify-between"><Link href="/planner" className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 font-semibold hover:bg-muted"><ArrowLeft className="h-4 w-4" />{t("Back to planner")}</Link><div className="flex items-center gap-3"><span className="flex items-center gap-2 text-sm text-muted-foreground"><Calculator className="h-4 w-4" />{t("CoolRoute model")}</span><LanguageToggle compact /></div></header>
+    <header className="mb-10 flex items-center justify-between"><Link href="/planner" className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 font-semibold hover:bg-muted"><ArrowLeft className="h-4 w-4" />{t("Back to planner")}</Link><div className="flex items-center gap-3"><span className="flex items-center gap-2 text-sm text-muted-foreground"><Calculator className="h-4 w-4" />{t("CoolRoute model")}</span><ReportIssueToggle /><LanguageToggle compact /></div></header>
     <div className="mb-8"><h1 className="text-3xl font-semibold tracking-tight md:text-4xl">{t("How the route is calculated")}</h1><p className="mt-2 text-muted-foreground">{t("Real pedestrian paths, distances and travel times with modeled shade exposure for the selected route.")}</p></div>
     <div className="space-y-5">
     <Card>

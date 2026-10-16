@@ -9,6 +9,7 @@ import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Moon, Sun } from "lucide-re
 import { getLocalSession, resendConfirmationLocal, signInLocal, signUpLocal } from "@/lib/local-auth";
 import { useLanguage } from "@/components/language-provider";
 import LanguageToggle from "@/components/language-toggle";
+import ReportIssueToggle from "@/components/report-issue-toggle";
 
 type AuthPageProps = { mode: "login" | "signup" };
 
@@ -94,6 +95,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
         <Link href={switchHref} className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors duration-700 ${isDark ? "border-white/20 hover:bg-white/10" : "border-black/15 hover:bg-black/5"}`}>
           {t(signup ? "Log in" : "Sign up")}
         </Link>
+        <ReportIssueToggle />
         <LanguageToggle compact />
         <button onClick={toggleTheme} type="button" aria-label={t(isDark ? "Switch to light mode" : "Switch to dark mode")} className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all duration-700 hover:rotate-12 ${isDark ? "border-white/20 hover:bg-white/10" : "border-black/15 hover:bg-black/5"}`}>
           {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}

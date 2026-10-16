@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/components/language-provider";
+import ReportIssueToggle from "@/components/report-issue-toggle";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -46,5 +47,5 @@ export default function AuthCallbackPage() {
     return () => { active = false; };
   }, [router, t]);
 
-  return <main className="flex min-h-screen items-center justify-center bg-[#07100d] px-6 text-center text-white"><div className="max-w-lg"><p role="status" className="text-lg">{message}</p><a href="/login" className="mt-6 inline-flex text-emerald-300 underline underline-offset-4">{t("Go to sign in")}</a></div></main>;
+  return <main className="relative flex min-h-screen items-center justify-center bg-[#07100d] px-6 text-center text-white"><div className="absolute right-6 top-6"><ReportIssueToggle /></div><div className="max-w-lg"><p role="status" className="text-lg">{message}</p><a href="/login" className="mt-6 inline-flex text-emerald-300 underline underline-offset-4">{t("Go to sign in")}</a></div></main>;
 }

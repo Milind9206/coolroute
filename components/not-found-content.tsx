@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { ArrowRight, Footprints } from "lucide-react";
 import LanguageToggle from "@/components/language-toggle";
+import ReportIssueToggle from "@/components/report-issue-toggle";
 import { useLanguage } from "@/components/language-provider";
 
 export default function NotFoundContent() {
   const { t } = useLanguage();
   return <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
-    <div className="absolute right-6 top-6"><LanguageToggle compact /></div>
+    <div className="absolute right-6 top-6 flex items-center gap-3"><ReportIssueToggle /><LanguageToggle compact /></div>
     <Footprints className="h-12 w-12 text-muted-foreground" aria-hidden />
     <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">{t("Error 404 • Footpath Closed or Unmapped Segment")}</p>
     <h1 className="max-w-xl text-4xl font-semibold tracking-tight md:text-5xl">{t("This route doesn't lead anywhere.")}</h1>
