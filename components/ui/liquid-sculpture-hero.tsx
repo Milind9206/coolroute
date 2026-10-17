@@ -23,24 +23,36 @@ export interface SculptureHeroProps {
   onSignOut?: () => void;
 }
 
-type Particle = { x: number; y: number; z: number; land: boolean; phase: number };
+type Particle = { x: number; y: number; z: number; land: boolean; ice: boolean; cloud: boolean; phase: number };
 
-const LAND_SHAPES = [
-  [-108, 48, 34, 22], [-98, 22, 22, 17], [-72, -17, 17, 40],
-  [-42, 72, 17, 10], [12, 48, 18, 13], [20, 8, 19, 37],
-  [48, 28, 28, 17], [82, 48, 45, 24], [112, 16, 28, 20],
-  [135, -25, 19, 12], [48, -15, 15, 16],
+// Simplified geographic coastlines in longitude/latitude. The dense surface
+// particles interpolate these outlines into a recognizable world map.
+const CONTINENTS: number[][][] = [
+  [[-168, 66], [-156, 71], [-143, 70], [-135, 59], [-128, 55], [-124, 48], [-125, 41], [-117, 32], [-111, 29], [-106, 23], [-98, 19], [-91, 19], [-86, 22], [-83, 9], [-78, 8], [-77, 18], [-81, 25], [-80, 32], [-75, 35], [-72, 41], [-66, 45], [-60, 48], [-56, 53], [-61, 58], [-69, 60], [-76, 57], [-81, 62], [-91, 68], [-101, 72], [-111, 72], [-120, 75], [-131, 70], [-141, 70], [-150, 71], [-158, 68]],
+  [[-81, 12], [-75, 10], [-70, 12], [-64, 10], [-60, 7], [-51, 4], [-48, -1], [-44, -3], [-39, -8], [-35, -10], [-38, -18], [-42, -23], [-46, -30], [-49, -34], [-53, -42], [-59, -51], [-66, -55], [-71, -49], [-74, -39], [-72, -30], [-77, -20], [-79, -10], [-80, 0]],
+  [[-52, 60], [-45, 59], [-39, 63], [-35, 68], [-40, 74], [-46, 81], [-55, 83], [-61, 78], [-58, 71], [-63, 66]],
+  [[-17, 36], [-7, 37], [4, 36], [10, 33], [11, 26], [16, 20], [24, 17], [32, 12], [42, 12], [49, 2], [44, -11], [40, -17], [35, -25], [30, -34], [22, -35], [17, -29], [12, -18], [8, -10], [2, -5], [-5, 5], [-12, 11], [-16, 18], [-16, 25], [-10, 31]],
+  [[-10, 36], [-7, 44], [-1, 47], [4, 44], [8, 47], [14, 46], [20, 52], [28, 55], [35, 55], [37, 60], [45, 57], [50, 60], [57, 57], [60, 52], [68, 55], [74, 59], [81, 58], [87, 55], [95, 57], [104, 53], [112, 55], [120, 52], [127, 53], [134, 48], [141, 45], [145, 39], [140, 35], [134, 34], [130, 31], [122, 24], [120, 19], [113, 14], [108, 10], [104, 2], [99, 7], [96, 16], [91, 21], [86, 22], [82, 25], [77, 29], [72, 27], [68, 24], [62, 25], [57, 27], [52, 25], [48, 30], [43, 37], [38, 40], [34, 42], [29, 41], [25, 40], [20, 40], [17, 45], [13, 45], [10, 42], [5, 43], [2, 48], [-5, 50], [-8, 55], [-4, 58], [2, 58], [7, 56], [12, 58], [18, 60], [25, 65], [30, 70], [28, 72], [20, 70], [15, 67], [10, 70], [5, 69], [2, 64], [-5, 62], [-10, 58], [-17, 58], [-24, 64], [-21, 69], [-15, 72], [-9, 71], [-5, 68], [-2, 64], [-7, 60], [-9, 54], [-5, 50]],
+  [[68, 24], [74, 22], [79, 16], [82, 9], [80, 6], [77, 8], [74, 13]],
+  [[95, 22], [101, 21], [108, 18], [111, 12], [109, 5], [105, -1], [108, -6], [115, -8], [119, -3], [124, 1], [130, 5], [133, 12], [128, 18], [121, 21], [115, 19], [109, 22], [103, 25]],
+  [[130, 33], [135, 35], [140, 39], [143, 44], [145, 42], [142, 36], [137, 33]],
+  [[112, -11], [117, -14], [123, -16], [129, -15], [135, -12], [137, -17], [134, -23], [130, -28], [125, -33], [119, -35], [115, -32], [113, -25], [114, -20]],
+  [[48, -13], [50, -16], [49, -24], [46, -26], [45, -19]],
+  [[-8, 59], [-5, 58], [-3, 55], [-5, 51], [-8, 54]],
 ];
 
+function inPolygon(longitude: number, latitude: number, polygon: number[][]) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+    if ((yi > latitude) !== (yj > latitude) && longitude < ((xj - xi) * (latitude - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
 function isLand(longitude: number, latitude: number) {
-  return LAND_SHAPES.some(([centerLon, centerLat, width, height]) => {
-    const rawDelta = Math.abs(longitude - centerLon);
-    const deltaLon = Math.min(rawDelta, 360 - rawDelta);
-    const coastNoise = 0.11 * Math.sin(longitude * 0.19 + latitude * 0.13)
-      + 0.055 * Math.sin(longitude * 0.43 - latitude * 0.31)
-      + 0.025 * Math.cos(longitude * 0.91 + latitude * 0.67);
-    return (deltaLon / width) ** 2 + ((latitude - centerLat) / height) ** 2 < 1 + coastNoise;
-  });
+  return latitude < -72 || CONTINENTS.some((polygon) => inPolygon(longitude, latitude, polygon));
 }
 
 function makeParticles(count: number): Particle[] {
@@ -54,6 +66,8 @@ function makeParticles(count: number): Particle[] {
     return {
       x, y, z,
       land: isLand(Math.atan2(z, x) * 180 / Math.PI, Math.asin(y) * 180 / Math.PI),
+      ice: Math.abs(Math.asin(y)) > 1.18,
+      cloud: Math.sin(index * 12.9898) * 43758.5453 % 1 > 0.55,
       phase: (index * 2.399) % (Math.PI * 2),
     };
   });
@@ -67,9 +81,11 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
 
-    const particles = makeParticles(2600);
+    const particles = makeParticles(9000);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const color = isDark ? "248, 255, 250" : "74, 91, 39";
+    const landColor = isDark ? [124, 174, 128] : [73, 111, 65];
+    const oceanColor = isDark ? [73, 145, 176] : [49, 119, 153];
+    const iceColor = isDark ? [224, 240, 233] : [230, 239, 225];
     const pointer = { x: 0, y: 0, target: 0, strength: 0 };
     let width = 0;
     let height = 0;
@@ -122,7 +138,7 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
       context.fillStyle = glow;
       context.fillRect(0, 0, width, height);
 
-      // Layered atmospheric glow and a shaded edge make the particle sphere read as a planet.
+      // Layered atmospheric glow, ocean disk, and directional light establish depth.
       const atmosphere = context.createRadialGradient(centerX, centerY, radius * 0.82, centerX, centerY, radius * 1.12);
       atmosphere.addColorStop(0, "rgba(0, 0, 0, 0)");
       atmosphere.addColorStop(0.72, isDark ? "rgba(146, 220, 188, 0.10)" : "rgba(122, 143, 69, 0.08)");
@@ -130,21 +146,29 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
       context.fillStyle = atmosphere;
       context.fillRect(centerX - radius * 1.2, centerY - radius * 1.2, radius * 2.4, radius * 2.4);
 
+      const ocean = context.createRadialGradient(centerX - radius * 0.38, centerY - radius * 0.48, radius * 0.05, centerX + radius * 0.18, centerY + radius * 0.12, radius * 1.15);
+      ocean.addColorStop(0, isDark ? "rgba(78, 153, 181, 0.3)" : "rgba(73, 146, 174, 0.28)");
+      ocean.addColorStop(0.58, isDark ? "rgba(35, 105, 135, 0.22)" : "rgba(56, 126, 151, 0.19)");
+      ocean.addColorStop(1, isDark ? "rgba(3, 21, 36, 0.76)" : "rgba(11, 48, 67, 0.66)");
       context.beginPath();
       context.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      context.strokeStyle = `rgba(${color}, ${isDark ? 0.3 : 0.34})`;
-      context.lineWidth = 1.2;
+      context.fillStyle = ocean;
+      context.fill();
+      context.beginPath();
+      context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      context.strokeStyle = isDark ? "rgba(150, 224, 236, 0.55)" : "rgba(92, 174, 190, 0.6)";
+      context.lineWidth = 1.5;
       context.stroke();
       context.save();
       context.beginPath();
       context.arc(centerX, centerY, radius - 1, 0, Math.PI * 2);
       context.clip();
-      context.strokeStyle = `rgba(${color}, ${isDark ? 0.085 : 0.11})`;
+      context.strokeStyle = isDark ? "rgba(184, 223, 220, 0.16)" : "rgba(214, 241, 233, 0.26)";
       context.lineWidth = 0.8;
       context.beginPath();
       context.ellipse(centerX, centerY, radius * Math.abs(Math.cos(rotation)), radius, 0, 0, Math.PI * 2);
       context.stroke();
-      for (const latitude of [-0.5, 0, 0.5]) {
+      for (const latitude of [-0.78, -0.5, 0, 0.5, 0.78]) {
         const latY = centerY - latitude * radius;
         const latRadius = radius * Math.sqrt(1 - latitude * latitude);
         context.beginPath();
@@ -153,20 +177,23 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
       }
       context.restore();
 
-      const visible: { x: number; y: number; nx: number; ny: number; depth: number; land: boolean; phase: number }[] = [];
+      const visible: { x: number; y: number; nx: number; ny: number; depth: number; land: boolean; ice: boolean; cloud: boolean; phase: number }[] = [];
       for (const particle of particles) {
         const rotatedX = particle.x * cosine + particle.z * sine;
         const depth = particle.z * cosine - particle.x * sine;
         if (depth < -0.12) continue;
-        visible.push({ x: centerX + rotatedX * radius, y: centerY - particle.y * radius, nx: rotatedX, ny: particle.y, depth, land: particle.land, phase: particle.phase });
+        visible.push({ x: centerX + rotatedX * radius, y: centerY - particle.y * radius, nx: rotatedX, ny: particle.y, depth, land: particle.land, ice: particle.ice, cloud: particle.cloud, phase: particle.phase });
       }
       visible.sort((a, b) => a.depth - b.depth);
       for (const particle of visible) {
-        const light = Math.max(0, particle.nx * -0.42 + particle.ny * 0.36 + particle.depth * 0.82);
-        const twinkle = reducedMotion ? 1 : 0.86 + 0.14 * Math.sin(elapsed * 1.2 + particle.phase);
-        const shade = 0.52 + light * 0.48;
-        const alpha = (particle.land ? 0.5 + particle.depth * 0.36 : 0.1 + particle.depth * 0.2) * shade * twinkle;
-        const size = (particle.land ? 1.15 : 0.58) + Math.max(0, particle.depth) * 0.9;
+        const light = Math.max(0.08, particle.nx * -0.48 + particle.ny * 0.4 + particle.depth * 0.79);
+        const twinkle = reducedMotion ? 1 : 0.91 + 0.09 * Math.sin(elapsed * 1.2 + particle.phase);
+        const shade = 0.26 + light * 0.74;
+        const cloudOn = particle.cloud && Math.sin(particle.x * 19 + particle.y * 13 + elapsed * (reducedMotion ? 0 : 0.035)) > 0.12;
+        const rgb = cloudOn ? [226, 241, 239] : particle.ice ? iceColor : particle.land ? landColor : oceanColor;
+        const baseAlpha = cloudOn ? 0.34 : particle.land ? 0.88 : 0.62;
+        const alpha = baseAlpha * (0.32 + particle.depth * 0.68) * shade * twinkle;
+        const size = (cloudOn ? 0.9 : particle.land ? 0.82 : 0.62) + Math.max(0, particle.depth) * 0.42;
         let px = particle.x;
         let py = particle.y;
         const dx = px - pointer.x;
@@ -181,7 +208,7 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
         }
         context.beginPath();
         context.arc(px, py, size, 0, Math.PI * 2);
-        context.fillStyle = `rgba(${color}, ${Math.max(0.05, alpha)})`;
+        context.fillStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${Math.max(0.04, alpha)})`;
         context.fill();
       }
 
@@ -192,7 +219,7 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
         const orbitY = centerY + Math.sin(angle) * radius * 0.34;
         context.beginPath();
         context.arc(orbitX, orbitY, index % 3 === 0 ? 1.5 : 1, 0, Math.PI * 2);
-        context.fillStyle = `rgba(${color}, ${isDark ? 0.48 : 0.42})`;
+        context.fillStyle = `rgba(215, 240, 240, ${isDark ? 0.38 : 0.34})`;
         context.fill();
       }
 
@@ -272,3 +299,4 @@ export default function SculptureHero({
     </section>
   );
 }
+
