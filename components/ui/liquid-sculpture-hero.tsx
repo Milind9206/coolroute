@@ -36,7 +36,10 @@ function isLand(longitude: number, latitude: number) {
   return LAND_SHAPES.some(([centerLon, centerLat, width, height]) => {
     const rawDelta = Math.abs(longitude - centerLon);
     const deltaLon = Math.min(rawDelta, 360 - rawDelta);
-    return (deltaLon / width) ** 2 + ((latitude - centerLat) / height) ** 2 < 1;
+    const coastNoise = 0.11 * Math.sin(longitude * 0.19 + latitude * 0.13)
+      + 0.055 * Math.sin(longitude * 0.43 - latitude * 0.31)
+      + 0.025 * Math.cos(longitude * 0.91 + latitude * 0.67);
+    return (deltaLon / width) ** 2 + ((latitude - centerLat) / height) ** 2 < 1 + coastNoise;
   });
 }
 
@@ -64,9 +67,10 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
 
-    const particles = makeParticles(1250);
+    const particles = makeParticles(2600);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const color = isDark ? "248, 255, 250" : "74, 91, 39";
+    const pointer = { x: 0, y: 0, target: 0, strength: 0 };
     let width = 0;
     let height = 0;
     let frameId = 0;
@@ -85,7 +89,22 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
     observer.observe(canvas);
     resize();
 
+    const onPointerMove = (event: PointerEvent) => {
+      const bounds = canvas.getBoundingClientRect();
+      pointer.x = event.clientX - bounds.left;
+      pointer.y = event.clientY - bounds.top;
+      pointer.target = 1;
+      if (reducedMotion && !frameId) frameId = requestAnimationFrame(draw);
+    };
+    const onPointerLeave = () => {
+      pointer.target = 0;
+      if (reducedMotion && !frameId) frameId = requestAnimationFrame(draw);
+    };
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerleave", onPointerLeave);
+
     const draw = (now: number) => {
+      frameId = 0;
       if (!startTime) startTime = now;
       const elapsed = (now - startTime) / 1000;
       const rotation = reducedMotion ? 0.45 : elapsed * 0.19;
@@ -94,6 +113,7 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
       const radius = Math.min(width, height) * 0.42;
       const centerX = width / 2;
       const centerY = height / 2;
+      pointer.strength += (pointer.target - pointer.strength) * 0.12;
 
       context.clearRect(0, 0, width, height);
       const glow = context.createRadialGradient(centerX, centerY, radius * 0.55, centerX, centerY, radius * 1.35);
@@ -102,11 +122,18 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
       context.fillStyle = glow;
       context.fillRect(0, 0, width, height);
 
-      // A soft spherical outline and latitude/longitude arcs give the particles a globe silhouette.
+      // Layered atmospheric glow and a shaded edge make the particle sphere read as a planet.
+      const atmosphere = context.createRadialGradient(centerX, centerY, radius * 0.82, centerX, centerY, radius * 1.12);
+      atmosphere.addColorStop(0, "rgba(0, 0, 0, 0)");
+      atmosphere.addColorStop(0.72, isDark ? "rgba(146, 220, 188, 0.10)" : "rgba(122, 143, 69, 0.08)");
+      atmosphere.addColorStop(1, "rgba(0, 0, 0, 0)");
+      context.fillStyle = atmosphere;
+      context.fillRect(centerX - radius * 1.2, centerY - radius * 1.2, radius * 2.4, radius * 2.4);
+
       context.beginPath();
       context.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      context.strokeStyle = `rgba(${color}, ${isDark ? 0.2 : 0.24})`;
-      context.lineWidth = 1;
+      context.strokeStyle = `rgba(${color}, ${isDark ? 0.3 : 0.34})`;
+      context.lineWidth = 1.2;
       context.stroke();
       context.save();
       context.beginPath();
@@ -126,27 +153,41 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
       }
       context.restore();
 
-      const visible: { x: number; y: number; depth: number; land: boolean; phase: number }[] = [];
+      const visible: { x: number; y: number; nx: number; ny: number; depth: number; land: boolean; phase: number }[] = [];
       for (const particle of particles) {
         const rotatedX = particle.x * cosine + particle.z * sine;
         const depth = particle.z * cosine - particle.x * sine;
         if (depth < -0.12) continue;
-        visible.push({ x: centerX + rotatedX * radius, y: centerY - particle.y * radius, depth, land: particle.land, phase: particle.phase });
+        visible.push({ x: centerX + rotatedX * radius, y: centerY - particle.y * radius, nx: rotatedX, ny: particle.y, depth, land: particle.land, phase: particle.phase });
       }
       visible.sort((a, b) => a.depth - b.depth);
       for (const particle of visible) {
-        const twinkle = 0.84 + 0.16 * Math.sin(elapsed * 1.4 + particle.phase);
-        const alpha = (particle.land ? 0.46 + particle.depth * 0.43 : 0.12 + particle.depth * 0.18) * twinkle;
-        const size = (particle.land ? 1.05 : 0.65) + Math.max(0, particle.depth) * 0.85;
+        const light = Math.max(0, particle.nx * -0.42 + particle.ny * 0.36 + particle.depth * 0.82);
+        const twinkle = reducedMotion ? 1 : 0.86 + 0.14 * Math.sin(elapsed * 1.2 + particle.phase);
+        const shade = 0.52 + light * 0.48;
+        const alpha = (particle.land ? 0.5 + particle.depth * 0.36 : 0.1 + particle.depth * 0.2) * shade * twinkle;
+        const size = (particle.land ? 1.15 : 0.58) + Math.max(0, particle.depth) * 0.9;
+        let px = particle.x;
+        let py = particle.y;
+        const dx = px - pointer.x;
+        const dy = py - pointer.y;
+        const distance = Math.hypot(dx, dy);
+        const scatterRadius = radius * 0.38;
+        if (distance > 0.5 && distance < scatterRadius && pointer.strength > 0.002) {
+          const falloff = 1 - distance / scatterRadius;
+          const push = pointer.strength * falloff * falloff * (particle.land ? 30 : 20);
+          px += dx / distance * push;
+          py += dy / distance * push;
+        }
         context.beginPath();
-        context.arc(particle.x, particle.y, size, 0, Math.PI * 2);
+        context.arc(px, py, size, 0, Math.PI * 2);
         context.fillStyle = `rgba(${color}, ${Math.max(0.05, alpha)})`;
         context.fill();
       }
 
       // Fine orbital particles add a little motion without competing with the headline.
       for (let index = 0; index < 18; index++) {
-        const angle = elapsed * 0.22 + index * Math.PI * 2 / 18;
+        const angle = (reducedMotion ? 0 : elapsed * 0.22) + index * Math.PI * 2 / 18;
         const orbitX = centerX + Math.cos(angle) * radius * 1.08;
         const orbitY = centerY + Math.sin(angle) * radius * 0.34;
         context.beginPath();
@@ -155,17 +196,21 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
         context.fill();
       }
 
-      if (!reducedMotion) frameId = requestAnimationFrame(draw);
+      if (!reducedMotion || pointer.strength > 0.002 || pointer.target > 0) frameId = requestAnimationFrame(draw);
     };
 
     frameId = requestAnimationFrame(draw);
     return () => {
       cancelAnimationFrame(frameId);
       observer.disconnect();
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerleave", onPointerLeave);
     };
   }, [isDark]);
 
-  return <canvas ref={canvasRef} aria-hidden="true" className="h-[220px] w-[220px] sm:h-[270px] sm:w-[270px] md:h-[320px] md:w-[320px] lg:h-[370px] lg:w-[370px]" />;
+  return <div className="relative h-[250px] w-[250px] sm:h-[310px] sm:w-[310px] md:h-[390px] md:w-[390px] lg:h-auto lg:w-full lg:max-w-[460px] lg:aspect-square">
+    <canvas ref={canvasRef} aria-hidden="true" className="absolute inset-0 h-full w-full cursor-crosshair" />
+  </div>;
 }
 
 export default function SculptureHero({
@@ -206,7 +251,7 @@ export default function SculptureHero({
       </nav>
 
       <div className="flex flex-1 flex-col justify-center gap-2 px-6 pb-10 md:px-12 md:pb-16 lg:flex-row lg:items-center lg:gap-0">
-        <div className="min-w-0 lg:w-[62%]">
+        <div className="min-w-0 lg:w-[58%]">
           <p className={`mb-4 text-sm font-semibold uppercase tracking-[0.16em] transition-colors duration-1000 md:text-base ${isDark ? "text-[#b5e6a2]" : "text-emerald-900"}`}>{eyebrow}</p>
           <h1 className="text-6xl font-semibold leading-[1.02] tracking-tight sm:text-7xl xl:text-8xl">
             {lines.map((line, index) => <span key={index} className="block">{headlineAccent && line.includes(headlineAccent) ? <>{line.replace(headlineAccent, "")}<span className={`transition-colors duration-1000 ${isDark ? "text-[#b5e6a2]" : "text-emerald-700"}`}>{headlineAccent}</span></> : line}</span>)}
@@ -220,7 +265,7 @@ export default function SculptureHero({
           </div>
         </div>
 
-        <div className="pointer-events-none flex w-full items-center justify-center lg:w-[38%]">
+        <div className="flex w-full items-center justify-center lg:w-[42%]">
           <ParticleGlobe isDark={isDark} />
         </div>
       </div>
