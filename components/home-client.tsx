@@ -28,7 +28,6 @@ export default function HomeClient() {
         body={t("Plan a walk around shade, sunlight and your comfort.")}
         primaryCta={{ label: t("Plan a walk"), href: "/planner" }}
         secondaryCta={null}
-        backdropText="CoolRoute"
       />
     </main>
   );
