@@ -83,7 +83,7 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
 
     const particles = makeParticles(9000);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const landColor = isDark ? [124, 174, 128] : [73, 111, 65];
+    const landColor = isDark ? [124, 174, 128] : [20, 78, 35];
     const oceanColor = isDark ? [73, 145, 176] : [49, 119, 153];
     const iceColor = isDark ? [224, 240, 233] : [230, 239, 225];
     const pointer = { x: 0, y: 0, target: 0, strength: 0 };
@@ -123,6 +123,8 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
       frameId = 0;
       if (!startTime) startTime = now;
       const elapsed = (now - startTime) / 1000;
+      const formationProgress = reducedMotion ? 1 : Math.min(1, elapsed / 2.15);
+      const formation = 1 - Math.pow(1 - formationProgress, 3);
       const rotation = reducedMotion ? 0.45 : elapsed * 0.19;
       const cosine = Math.cos(rotation);
       const sine = Math.sin(rotation);
@@ -153,13 +155,16 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
       context.beginPath();
       context.arc(centerX, centerY, radius, 0, Math.PI * 2);
       context.fillStyle = ocean;
+      context.globalAlpha = formation;
       context.fill();
       context.beginPath();
       context.arc(centerX, centerY, radius, 0, Math.PI * 2);
       context.strokeStyle = isDark ? "rgba(150, 224, 236, 0.55)" : "rgba(92, 174, 190, 0.6)";
       context.lineWidth = 1.5;
       context.stroke();
+      context.globalAlpha = 1;
       context.save();
+      context.globalAlpha = formation;
       context.beginPath();
       context.arc(centerX, centerY, radius - 1, 0, Math.PI * 2);
       context.clip();
@@ -194,21 +199,25 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
         const baseAlpha = cloudOn ? 0.34 : particle.land ? 0.88 : 0.62;
         const alpha = baseAlpha * (0.32 + particle.depth * 0.68) * shade * twinkle;
         const size = (cloudOn ? 0.9 : particle.land ? 0.82 : 0.62) + Math.max(0, particle.depth) * 0.42;
-        let px = particle.x;
-        let py = particle.y;
+        const startAngle = particle.phase;
+        const startDistance = Math.hypot(width, height) * (0.48 + (Math.sin(particle.phase * 3.17) + 1) * 0.2);
+        const startX = centerX + Math.cos(startAngle) * startDistance;
+        const startY = centerY + Math.sin(startAngle) * startDistance;
+        let px = startX + (particle.x - startX) * formation;
+        let py = startY + (particle.y - startY) * formation;
         const dx = px - pointer.x;
         const dy = py - pointer.y;
         const distance = Math.hypot(dx, dy);
         const scatterRadius = radius * 0.38;
         if (distance > 0.5 && distance < scatterRadius && pointer.strength > 0.002) {
           const falloff = 1 - distance / scatterRadius;
-          const push = pointer.strength * falloff * falloff * (particle.land ? 30 : 20);
+        const push = pointer.strength * falloff * falloff * formation * (particle.land ? 30 : 20);
           px += dx / distance * push;
           py += dy / distance * push;
         }
         context.beginPath();
         context.arc(px, py, size, 0, Math.PI * 2);
-        context.fillStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${Math.max(0.04, alpha)})`;
+        context.fillStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${Math.max(0.04, alpha * (0.28 + formation * 0.72))})`;
         context.fill();
       }
 
@@ -219,7 +228,7 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
         const orbitY = centerY + Math.sin(angle) * radius * 0.34;
         context.beginPath();
         context.arc(orbitX, orbitY, index % 3 === 0 ? 1.5 : 1, 0, Math.PI * 2);
-        context.fillStyle = `rgba(215, 240, 240, ${isDark ? 0.38 : 0.34})`;
+        context.fillStyle = `rgba(215, 240, 240, ${(isDark ? 0.38 : 0.34) * formation})`;
         context.fill();
       }
 
