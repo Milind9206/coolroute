@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-poppins);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -127,4 +127,82 @@
   html {
     @apply font-sans;
   }
+}
+
+.reveal-on-scroll.is-visible {
+  animation: coolroute-fade-up 850ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal-on-scroll.is-pending {
+  opacity: 0;
+  transform: translateY(26px) scale(0.985);
+  filter: blur(4px);
+}
+
+@keyframes coolroute-fade-up {
+  from { opacity: 0; transform: translateY(26px) scale(0.985); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+html { scroll-behavior: smooth; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal-on-scroll.is-visible,
+  .reveal-on-scroll.is-pending { animation: none; opacity: 1; transform: none; filter: none; }
+  *, *::before, *::after { scroll-behavior: auto !important; }
+}
+
+.marketing-page {
+  background-color: #07100d !important;
+  color: #e6f0ec !important;
+}
+
+.marketing-page [class*="text-[#0B3B4F]"] { color: #d7e6e0 !important; }
+.marketing-page [class*="text-[#0F766E]"],
+.marketing-page [class*="text-[#0B665E]"] { color: #5eead4 !important; }
+.marketing-page [class*="text-[#43635A]"] { color: #b6cbc3 !important; }
+
+.marketing-page [class*="bg-[#F8FAFA]"],
+.marketing-page [class*="bg-white"] { background-color: #101b18 !important; }
+.marketing-page [class*="bg-[#EFF7F4]"],
+.marketing-page [class*="bg-[#E7F7F2]"],
+.marketing-page [class*="bg-[#E9F3EE]"],
+.marketing-page [class*="bg-[#EAF4EF]"],
+.marketing-page [class*="bg-[#DFF6EF]"],
+.marketing-page [class*="bg-[#DDF7F0]"],
+.marketing-page [class*="bg-[#D8F5EC]"] { background-color: #13231e !important; }
+
+.marketing-page [class*="border-[#0B3B4F]"] { border-color: rgb(225 241 234 / 12%) !important; }
+.marketing-page header { border-color: rgb(225 241 234 / 10%) !important; }
+.marketing-page .route-map-art { filter: brightness(0.62) saturate(0.82); }
+.marketing-page .marketing-logo { filter: brightness(0) invert(1); }
+.marketing-page .brand-interlude { background: #091713; }
+.marketing-page .brand-interlude-glow {
+  background: radial-gradient(ellipse at 50% 65%, rgb(45 141 112 / 20%), transparent 60%), radial-gradient(circle at 16% 22%, rgb(199 255 236 / 18%) 1px, transparent 1.8px), radial-gradient(circle at 83% 35%, rgb(199 255 236 / 15%) 1px, transparent 1.8px);
+  background-size: auto, 43px 43px, 61px 61px;
+  animation: brand-field-drift 28s linear infinite;
+}
+.particle-story-stage {
+  background: radial-gradient(ellipse at 50% 45%, #0b1714 0%, #060b09 54%, #040706 100%);
+}
+.particle-story-stars {
+  opacity: .8;
+  background-image:
+    radial-gradient(circle at 14% 22%, rgb(225 250 245 / 58%) .7px, transparent 1.2px),
+    radial-gradient(circle at 72% 68%, rgb(177 235 220 / 42%) .8px, transparent 1.3px),
+    radial-gradient(circle at 48% 40%, rgb(255 255 255 / 35%) .7px, transparent 1.15px),
+    radial-gradient(ellipse at 50% 50%, transparent 30%, rgb(0 0 0 / 28%) 100%);
+  background-size: 83px 91px, 137px 119px, 53px 67px, 100% 100%;
+  animation: particle-stars-drift 42s linear infinite;
+}
+.particle-story-orb canvas { pointer-events: auto; }
+.particle-brand-logo { aspect-ratio: 580 / 300; }
+@keyframes brand-field-drift { to { background-position: 0 0, 43px 43px, -61px 61px; } }
+@keyframes particle-stars-drift { to { background-position: 83px 91px, -137px -119px, 53px 67px, 0 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-interlude-glow { animation: none; }
+  .particle-story-stars { animation: none; }
 }

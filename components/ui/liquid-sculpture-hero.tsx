@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Moon, Sun } from "lucide-react";
 import { useLanguage } from "@/components/language-provider";
 import LanguageToggle from "@/components/language-toggle";
@@ -73,7 +74,7 @@ function makeParticles(count: number): Particle[] {
   });
 }
 
-function ParticleGlobe({ isDark }: { isDark: boolean }) {
+export function ParticleGlobe({ isDark }: { isDark: boolean }) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
   React.useEffect(() => {
@@ -83,14 +84,17 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
 
     const particles = makeParticles(9000);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const landColor = isDark ? [124, 174, 128] : [20, 78, 35];
-    const oceanColor = isDark ? [73, 145, 176] : [49, 119, 153];
+    const landColor = isDark ? [48, 205, 87] : [20, 78, 35];
+    const oceanColor = isDark ? [116, 184, 216] : [49, 119, 153];
     const iceColor = isDark ? [224, 240, 233] : [230, 239, 225];
     const pointer = { x: 0, y: 0, target: 0, strength: 0 };
+    const rotation = { yawOffset: 0, pitchOffset: 0, yawVelocity: 0, pitchVelocity: 0, dragging: false, lastX: 0, lastY: 0 };
+    let automaticYaw = 0;
     let width = 0;
     let height = 0;
     let frameId = 0;
     let startTime = 0;
+    let lastFrameTime = 0;
 
     const resize = () => {
       const bounds = canvas.getBoundingClientRect();
@@ -109,121 +113,144 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
       const bounds = canvas.getBoundingClientRect();
       pointer.x = event.clientX - bounds.left;
       pointer.y = event.clientY - bounds.top;
-      pointer.target = 1;
+      if (rotation.dragging) {
+        const dx = event.clientX - rotation.lastX;
+        const dy = event.clientY - rotation.lastY;
+        rotation.lastX = event.clientX;
+        rotation.lastY = event.clientY;
+        rotation.yawOffset += dx * 0.014;
+        rotation.pitchOffset = Math.max(-1.15, Math.min(1.15, rotation.pitchOffset + dy * 0.008));
+        rotation.yawVelocity = dx * 0.0018;
+        rotation.pitchVelocity = dy * 0.0015;
+        pointer.target = 0;
+      } else {
+        pointer.target = 1;
+      }
       if (reducedMotion && !frameId) frameId = requestAnimationFrame(draw);
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      rotation.dragging = true;
+      rotation.lastX = event.clientX;
+      rotation.lastY = event.clientY;
+      rotation.yawVelocity = 0;
+      rotation.pitchVelocity = 0;
+      pointer.target = 0;
+      canvas.setPointerCapture(event.pointerId);
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      rotation.dragging = false;
+      if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+      if (!frameId) frameId = requestAnimationFrame(draw);
     };
     const onPointerLeave = () => {
-      pointer.target = 0;
+      if (!rotation.dragging) pointer.target = 0;
       if (reducedMotion && !frameId) frameId = requestAnimationFrame(draw);
     };
+    const onKeyDown = (event: KeyboardEvent) => {
+      const step = event.shiftKey ? 0.18 : 0.08;
+      if (event.key === "ArrowLeft") rotation.yawOffset -= step;
+      else if (event.key === "ArrowRight") rotation.yawOffset += step;
+      else if (event.key === "ArrowUp") rotation.pitchOffset = Math.max(-1.15, rotation.pitchOffset - step);
+      else if (event.key === "ArrowDown") rotation.pitchOffset = Math.min(1.15, rotation.pitchOffset + step);
+      else return;
+      event.preventDefault();
+      if (!frameId) frameId = requestAnimationFrame(draw);
+    };
     canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointercancel", onPointerUp);
     canvas.addEventListener("pointerleave", onPointerLeave);
+    canvas.addEventListener("keydown", onKeyDown);
 
     const draw = (now: number) => {
       frameId = 0;
       if (!startTime) startTime = now;
       const elapsed = (now - startTime) / 1000;
-      const formationProgress = reducedMotion ? 1 : Math.min(1, elapsed / 2.15);
+      const delta = Math.min(0.05, Math.max(0, (now - (lastFrameTime || now)) / 1000));
+      lastFrameTime = now;
+      if (!rotation.dragging && !reducedMotion) {
+        automaticYaw += delta * 0.35;
+      }
+      if (!rotation.dragging) {
+        const inertia = Math.exp(-delta * 5);
+        const returnToOrbit = Math.exp(-delta * 1.45);
+        rotation.yawVelocity *= inertia;
+        rotation.pitchVelocity *= inertia;
+        // Preserve the user's full-turn yaw; let the idle spin continue from that angle.
+        rotation.yawOffset += rotation.yawVelocity;
+        rotation.pitchOffset = (rotation.pitchOffset + rotation.pitchVelocity) * returnToOrbit;
+      }
+      const formationProgress = reducedMotion ? 1 : Math.min(1, elapsed / 3);
       const formation = 1 - Math.pow(1 - formationProgress, 3);
-      const rotation = reducedMotion ? 0.45 : elapsed * 0.19;
-      const cosine = Math.cos(rotation);
-      const sine = Math.sin(rotation);
-      const radius = Math.min(width, height) * 0.42;
+      const yaw = automaticYaw + rotation.yawOffset;
+      const pitch = rotation.pitchOffset;
+      const cosine = Math.cos(yaw);
+      const sine = Math.sin(yaw);
+      const pitchCosine = Math.cos(pitch);
+      const pitchSine = Math.sin(pitch);
+      const radius = Math.min(width, height) * 0.45;
       const centerX = width / 2;
       const centerY = height / 2;
       pointer.strength += (pointer.target - pointer.strength) * 0.12;
 
       context.clearRect(0, 0, width, height);
-      const glow = context.createRadialGradient(centerX, centerY, radius * 0.55, centerX, centerY, radius * 1.35);
-      glow.addColorStop(0, isDark ? "rgba(84, 151, 110, 0.12)" : "rgba(105, 128, 54, 0.10)");
-      glow.addColorStop(1, "rgba(0, 0, 0, 0)");
-      context.fillStyle = glow;
-      context.fillRect(0, 0, width, height);
-
-      // Layered atmospheric glow, ocean disk, and directional light establish depth.
-      const atmosphere = context.createRadialGradient(centerX, centerY, radius * 0.82, centerX, centerY, radius * 1.12);
-      atmosphere.addColorStop(0, "rgba(0, 0, 0, 0)");
-      atmosphere.addColorStop(0.72, isDark ? "rgba(146, 220, 188, 0.10)" : "rgba(122, 143, 69, 0.08)");
-      atmosphere.addColorStop(1, "rgba(0, 0, 0, 0)");
-      context.fillStyle = atmosphere;
-      context.fillRect(centerX - radius * 1.2, centerY - radius * 1.2, radius * 2.4, radius * 2.4);
-
-      const ocean = context.createRadialGradient(centerX - radius * 0.38, centerY - radius * 0.48, radius * 0.05, centerX + radius * 0.18, centerY + radius * 0.12, radius * 1.15);
-      ocean.addColorStop(0, isDark ? "rgba(78, 153, 181, 0.3)" : "rgba(73, 146, 174, 0.28)");
-      ocean.addColorStop(0.58, isDark ? "rgba(35, 105, 135, 0.22)" : "rgba(56, 126, 151, 0.19)");
-      ocean.addColorStop(1, isDark ? "rgba(3, 21, 36, 0.76)" : "rgba(11, 48, 67, 0.66)");
-      context.beginPath();
-      context.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      context.fillStyle = ocean;
-      context.globalAlpha = formation;
-      context.fill();
-      context.beginPath();
-      context.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      context.strokeStyle = isDark ? "rgba(150, 224, 236, 0.55)" : "rgba(92, 174, 190, 0.6)";
-      context.lineWidth = 1.5;
-      context.stroke();
       context.globalAlpha = 1;
-      context.save();
-      context.globalAlpha = formation;
-      context.beginPath();
-      context.arc(centerX, centerY, radius - 1, 0, Math.PI * 2);
-      context.clip();
-      context.strokeStyle = isDark ? "rgba(184, 223, 220, 0.16)" : "rgba(214, 241, 233, 0.26)";
-      context.lineWidth = 0.8;
-      context.beginPath();
-      context.ellipse(centerX, centerY, radius * Math.abs(Math.cos(rotation)), radius, 0, 0, Math.PI * 2);
-      context.stroke();
-      for (const latitude of [-0.78, -0.5, 0, 0.5, 0.78]) {
-        const latY = centerY - latitude * radius;
-        const latRadius = radius * Math.sqrt(1 - latitude * latitude);
-        context.beginPath();
-        context.ellipse(centerX, latY, latRadius, latRadius * 0.23, 0, 0, Math.PI * 2);
-        context.stroke();
-      }
-      context.restore();
-
       const visible: { x: number; y: number; nx: number; ny: number; depth: number; land: boolean; ice: boolean; cloud: boolean; phase: number }[] = [];
-      for (const particle of particles) {
+      for (let index = 0; index < particles.length; index++) {
+        const particle = particles[index];
         const rotatedX = particle.x * cosine + particle.z * sine;
-        const depth = particle.z * cosine - particle.x * sine;
+        const yawDepth = particle.z * cosine - particle.x * sine;
+        const rotatedY = particle.y * pitchCosine - yawDepth * pitchSine;
+        const depth = yawDepth * pitchCosine + particle.y * pitchSine;
         if (depth < -0.12) continue;
-        visible.push({ x: centerX + rotatedX * radius, y: centerY - particle.y * radius, nx: rotatedX, ny: particle.y, depth, land: particle.land, ice: particle.ice, cloud: particle.cloud, phase: particle.phase });
+        visible.push({ x: particle.x, y: particle.y, nx: rotatedX, ny: rotatedY, depth, land: particle.land, ice: particle.ice, cloud: particle.cloud, phase: particle.phase });
       }
       visible.sort((a, b) => a.depth - b.depth);
       for (const particle of visible) {
         const light = Math.max(0.08, particle.nx * -0.48 + particle.ny * 0.4 + particle.depth * 0.79);
         const twinkle = reducedMotion ? 1 : 0.91 + 0.09 * Math.sin(elapsed * 1.2 + particle.phase);
-        const shade = 0.26 + light * 0.74;
-        const cloudOn = particle.cloud && Math.sin(particle.x * 19 + particle.y * 13 + elapsed * (reducedMotion ? 0 : 0.035)) > 0.12;
+        const shade = 0.48 + light * 0.52;
+        const cloudOn = particle.cloud && Math.sin(particle.x * 19 + particle.y * 13 + elapsed * (reducedMotion ? 0 : 0.035)) > 0.78;
         const rgb = cloudOn ? [226, 241, 239] : particle.ice ? iceColor : particle.land ? landColor : oceanColor;
-        const baseAlpha = cloudOn ? 0.34 : particle.land ? 0.88 : 0.62;
-        const alpha = baseAlpha * (0.32 + particle.depth * 0.68) * shade * twinkle;
-        const size = (cloudOn ? 0.9 : particle.land ? 0.82 : 0.62) + Math.max(0, particle.depth) * 0.42;
-        const startAngle = particle.phase;
-        const startDistance = Math.hypot(width, height) * (0.48 + (Math.sin(particle.phase * 3.17) + 1) * 0.2);
+        const baseAlpha = cloudOn ? 0.42 : particle.land ? 1 : 0.98;
+        const depthVisibility = particle.depth < 0 ? 0.5 : 0.82 + particle.depth * 0.18;
+        const alpha = baseAlpha * depthVisibility * shade * twinkle;
+        const size = (cloudOn ? 0.95 : particle.land ? 1.9 : 0.72) + Math.max(0, particle.depth) * 0.4;
+        const delay = (Math.sin(particle.phase * 1.73 + particle.y * 5) + 1) * 0.24;
+        const arrivalProgress = reducedMotion ? 1 : Math.max(0, Math.min(1, (elapsed - delay) / 2.45));
+        const particleFormation = 1 - Math.pow(1 - arrivalProgress, 3);
+        const startAngle = particle.phase + Math.sin(particle.phase * 2.41) * 0.72;
+        const startDistance = Math.hypot(width, height) * (0.18 + (Math.sin(particle.phase * 3.17) + 1) * 0.39);
         const startX = centerX + Math.cos(startAngle) * startDistance;
         const startY = centerY + Math.sin(startAngle) * startDistance;
-        let px = startX + (particle.x - startX) * formation;
-        let py = startY + (particle.y - startY) * formation;
+        const targetX = centerX + particle.nx * radius;
+        const targetY = centerY - particle.ny * radius;
+        const travelX = targetX - startX;
+        const travelY = targetY - startY;
+        const travelLength = Math.max(1, Math.hypot(travelX, travelY));
+        const arc = Math.sin(arrivalProgress * Math.PI) * Math.sin(particle.phase * 2.87) * Math.min(width, height) * 0.085;
+        let px = startX + travelX * particleFormation - (travelY / travelLength) * arc;
+        let py = startY + travelY * particleFormation + (travelX / travelLength) * arc;
         const dx = px - pointer.x;
         const dy = py - pointer.y;
         const distance = Math.hypot(dx, dy);
         const scatterRadius = radius * 0.38;
-        if (distance > 0.5 && distance < scatterRadius && pointer.strength > 0.002) {
+        if (!rotation.dragging && distance > 0.5 && distance < scatterRadius && pointer.strength > 0.002) {
           const falloff = 1 - distance / scatterRadius;
-        const push = pointer.strength * falloff * falloff * formation * (particle.land ? 30 : 20);
+          const push = pointer.strength * falloff * falloff * particleFormation * (particle.land ? 30 : 20);
           px += dx / distance * push;
           py += dy / distance * push;
         }
         context.beginPath();
         context.arc(px, py, size, 0, Math.PI * 2);
-        context.fillStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${Math.max(0.04, alpha * (0.28 + formation * 0.72))})`;
+        context.fillStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${Math.max(0.3, alpha * (0.18 + particleFormation * 0.82))})`;
         context.fill();
       }
 
       // Fine orbital particles add a little motion without competing with the headline.
       for (let index = 0; index < 18; index++) {
-        const angle = (reducedMotion ? 0 : elapsed * 0.22) + index * Math.PI * 2 / 18;
+        const angle = yaw * 0.4 + index * Math.PI * 2 / 18;
         const orbitX = centerX + Math.cos(angle) * radius * 1.08;
         const orbitY = centerY + Math.sin(angle) * radius * 0.34;
         context.beginPath();
@@ -232,7 +259,8 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
         context.fill();
       }
 
-      if (!reducedMotion || pointer.strength > 0.002 || pointer.target > 0) frameId = requestAnimationFrame(draw);
+      const returning = Math.abs(rotation.pitchOffset) + Math.abs(rotation.yawVelocity) + Math.abs(rotation.pitchVelocity) > 0.001;
+      if (!reducedMotion || pointer.strength > 0.002 || pointer.target > 0 || rotation.dragging || returning) frameId = requestAnimationFrame(draw);
     };
 
     frameId = requestAnimationFrame(draw);
@@ -240,12 +268,16 @@ function ParticleGlobe({ isDark }: { isDark: boolean }) {
       cancelAnimationFrame(frameId);
       observer.disconnect();
       canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointerup", onPointerUp);
+      canvas.removeEventListener("pointercancel", onPointerUp);
       canvas.removeEventListener("pointerleave", onPointerLeave);
+      canvas.removeEventListener("keydown", onKeyDown);
     };
   }, [isDark]);
 
-  return <div className="relative h-[250px] w-[250px] sm:h-[310px] sm:w-[310px] md:h-[390px] md:w-[390px] lg:h-auto lg:w-full lg:max-w-[460px] lg:aspect-square">
-    <canvas ref={canvasRef} aria-hidden="true" className="absolute inset-0 h-full w-full cursor-crosshair" />
+  return <div className="relative aspect-square w-full min-w-0 max-w-[min(100vw,920px)]">
+    <canvas ref={canvasRef} role="img" aria-label="Interactive particle globe. Drag to rotate, or focus and use the arrow keys." tabIndex={0} className="absolute inset-0 h-full w-full cursor-grab touch-none active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" />
   </div>;
 }
 
@@ -277,7 +309,7 @@ export default function SculptureHero({
     <section className={`relative isolate flex min-h-[100svh] w-full flex-col overflow-hidden transition-colors duration-1000 ease-in-out ${isDark ? "bg-[#07100d] text-white" : "bg-[#f3f1ea] text-[#10201a]"}`}>
       <nav className="flex items-center justify-between gap-3 px-6 py-5 md:px-12">
         <div className="flex items-center gap-3">
-          <span className={`text-lg font-semibold tracking-tight transition-colors duration-1000 ${isDark ? "text-[#b5e6a2]" : "text-[#10201a]"}`}>{brand}</span>
+          <Image src="/coolroute-logo.svg" alt={brand} width={180} height={45} priority className={`h-8 w-auto ${isDark ? "brightness-0 invert" : "grayscale"}`} />
           {onSignOut && <button type="button" onClick={onSignOut} className={`rounded-full px-3 py-2 text-sm transition-colors ${isDark ? "text-white/55 hover:bg-white/10 hover:text-white" : "text-black/55 hover:bg-black/5 hover:text-black"}`}>{t("Sign out")}</button>}
         </div>
         <div className="flex items-center gap-2"><ReportIssueToggle /><LanguageToggle compact /></div>
@@ -308,4 +340,3 @@ export default function SculptureHero({
     </section>
   );
 }
-

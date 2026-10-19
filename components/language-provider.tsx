@@ -96,6 +96,7 @@ const hi: Record<string, string> = {
   "Plan a walk": "पैदल यात्रा की योजना बनाएँ",
   "Route planner": "रास्ता योजनाकार",
   "Set your start and destination, then compare walking routes.": "शुरुआती जगह और मंज़िल चुनें, फिर पैदल रास्तों की तुलना करें।",
+  "Preview the route planner, then sign in when you’re ready to open a live route.": "रास्ता योजनाकार का पूर्वावलोकन देखें। लाइव रास्ता खोलने के लिए तैयार हों, तो साइन इन करें।",
   "Locations": "स्थान",
   "Search location": "स्थान खोजें",
   "Destination location": "मंज़िल का स्थान",

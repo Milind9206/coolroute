@@ -16,7 +16,7 @@ type AuthPageProps = { mode: "login" | "signup" };
 function safeNext(value: string | null) {
   return value && value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/login") && !value.startsWith("/signup")
     ? value
-    : "/welcome";
+    : "/";
 }
 
 export default function AuthPage({ mode }: AuthPageProps) {
@@ -24,7 +24,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const { t } = useLanguage();
   const [mounted, setMounted] = React.useState(false);
-  const [destination, setDestination] = React.useState("/welcome");
+  const [destination, setDestination] = React.useState("/");
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -39,7 +39,12 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
   React.useEffect(() => {
     setMounted(true);
-    const next = safeNext(new URLSearchParams(window.location.search).get("next"));
+    const requestedNext = new URLSearchParams(window.location.search).get("next");
+    if (!requestedNext) {
+      router.replace("/");
+      return;
+    }
+    const next = safeNext(requestedNext);
     setDestination(next);
     getLocalSession().then((session) => { if (session) router.replace(next); }).catch(() => undefined);
   }, [router]);
@@ -107,7 +112,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
           <div aria-hidden className={`absolute inset-0 transition-colors duration-1000 ${isDark ? "bg-gradient-to-br from-emerald-950/80 via-[#0d211a] to-[#07100d]" : "bg-gradient-to-br from-emerald-100 via-[#e8f0dc] to-[#f3f1ea]"}`} />
           <div aria-hidden className={`absolute -right-24 top-24 h-80 w-80 rounded-full border-[1px] transition-all duration-[1600ms] ${isDark ? "scale-100 border-emerald-300/25" : "scale-110 border-emerald-800/15"}`} />
           <div aria-hidden className={`absolute -right-12 top-36 h-56 w-56 rounded-full border-[1px] transition-all duration-[1600ms] ${isDark ? "scale-100 border-emerald-300/20" : "scale-110 border-emerald-800/10"}`} />
-          <div className="relative flex items-center gap-3 text-lg font-semibold"><Image src="/coolroute-language-logo.jpeg" width={38} height={38} alt="" className={`h-9 w-9 object-contain ${isDark ? "grayscale invert contrast-[5] mix-blend-screen" : "grayscale contrast-[5] mix-blend-multiply"}`} /> CoolRoute</div>
+          <Image src="/coolroute-logo.svg" width={180} height={45} alt="CoolRoute" className={`relative h-9 w-auto ${isDark ? "brightness-0 invert" : "grayscale"}`} />
           <div className="relative max-w-md">
             <p className={`mb-5 text-sm font-semibold uppercase tracking-[0.22em] transition-colors duration-1000 ${isDark ? "text-emerald-300" : "text-emerald-800"}`}>{t("Take the cooler way")}</p>
             <h1 className="text-5xl font-semibold leading-[1.04] tracking-tight lg:text-6xl">{t("A little more shade.")}<br />{t("A better way there.")}</h1>
@@ -117,7 +122,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
         </section>
 
         <section className="flex min-h-[38rem] flex-col justify-center px-7 py-14 sm:px-12 md:px-10 lg:px-14">
-          <div className="mb-8 md:hidden"><p className="flex items-center gap-2 text-lg font-semibold"><Image src="/coolroute-language-logo.jpeg" width={30} height={30} alt="" className={`h-7 w-7 object-contain ${isDark ? "grayscale invert contrast-[5] mix-blend-screen" : "grayscale contrast-[5] mix-blend-multiply"}`} />CoolRoute</p></div>
+          <div className="mb-8 md:hidden"><Image src="/coolroute-logo.svg" width={160} height={40} alt="CoolRoute" className={`h-8 w-auto ${isDark ? "brightness-0 invert" : "grayscale"}`} /></div>
           <div className="mb-8">
             <p className={`mb-3 text-sm font-semibold uppercase tracking-[0.16em] ${isDark ? "text-emerald-300" : "text-emerald-800"}`}>{t(signup ? "Create your account" : "Welcome back")}</p>
             <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">{t(signup ? "Find your way in." : "Let’s get there.")}</h2>

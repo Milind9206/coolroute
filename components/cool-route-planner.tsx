@@ -4,6 +4,7 @@ import * as React from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, Info, MapPin, Satellite, Sun, SunDim } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -11,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useLanguage } from "@/components/language-provider";
+import { getLocalSession } from "@/lib/local-auth";
 import {
   solarAt,
   type Alert as RouteAlert, type RouteStats,
@@ -207,7 +209,10 @@ function AlertItem({ a }: { a: RouteAlert }) {
 }
 
 export default function CoolRoutePlanner() {
+  const router = useRouter();
   const { t, language } = useLanguage();
+  const [signedIn, setSignedIn] = React.useState(false);
+  const sessionRequest = React.useRef<Promise<boolean> | null>(null);
   const [startPlace, setStartPlace] = React.useState<Place>({ location: { lat: 28.6285, lon: 77.215 }, label: "Connaught Place, New Delhi · start" });
   const [endPlace, setEndPlace] = React.useState<Place>({ location: { lat: 28.6285 + 4 * 0.0009, lon: 77.215 + 5 * 0.00102 }, label: "Connaught Place, New Delhi · destination" });
   const [hour, setHour] = React.useState(13);
@@ -226,6 +231,22 @@ export default function CoolRoutePlanner() {
   const [routeError, setRouteError] = React.useState("");
   const [remoteRoutes, setRemoteRoutes] = React.useState<RemoteRoute[]>([]);
   const [env, setEnv] = React.useState<{ temperatureC: number; uvIndex: number; source: string; timezone?: string; hourly?: { time: string; temperatureC: number; uvIndex: number }[] } | null>(null);
+
+  React.useEffect(() => {
+    sessionRequest.current = getLocalSession().then((session) => {
+      setSignedIn(Boolean(session));
+      return Boolean(session);
+    }).catch(() => {
+      setSignedIn(false);
+      return false;
+    });
+  }, []);
+
+  const requireLocationAccount = React.useCallback(async () => {
+    const hasSession = await (sessionRequest.current ?? getLocalSession().then(Boolean).catch(() => false));
+    if (!hasSession) router.push("/login?next=%2Fplanner");
+    return hasSession;
+  }, [router]);
 
   const timeZone = env?.timezone ?? "Asia/Kolkata";
   const selectedWeather = React.useMemo(() => {
@@ -257,6 +278,10 @@ export default function CoolRoutePlanner() {
   dataRef.current = data;
 
   mapPickRef.current = (place) => {
+    if (!signedIn) {
+      void requireLocationAccount();
+      return;
+    }
     if (activeEndpoint === "start") {
       setStartPlace(place);
       setSearchStart(place.label);
@@ -372,14 +397,14 @@ export default function CoolRoutePlanner() {
               <div className="space-y-3">
                 <label className={`block space-y-1 rounded-lg p-2 text-sm ${activeEndpoint === "start" ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}>
                   <span className="font-medium">{t("Search location")}</span>
-                  <span className="flex items-center gap-2 rounded-md border border-input px-3"><MapPin className="h-4 w-4 shrink-0 text-indigo-500" /><input value={searchStart} onFocus={() => setActiveEndpoint("start")} onChange={(e) => setSearchStart(e.target.value)} className="h-11 min-w-0 flex-1 bg-transparent outline-none" placeholder={t("e.g. India Gate, New Delhi")} /></span>
+                  <span className="flex items-center gap-2 rounded-md border border-input px-3"><MapPin className="h-4 w-4 shrink-0 text-indigo-500" /><input value={searchStart} readOnly={!signedIn} onFocus={async (event) => { if (!(await requireLocationAccount())) { event.currentTarget.blur(); return; } setActiveEndpoint("start"); }} onChange={(e) => setSearchStart(e.target.value)} className="h-11 min-w-0 flex-1 bg-transparent outline-none read-only:cursor-pointer" placeholder={t("e.g. India Gate, New Delhi")} /></span>
                   <span className="mt-1 block truncate text-xs text-muted-foreground">{t("Selected: ")}{startPlace.label.replace(" · start", ` · ${t("start")}`)}</span>
                   <button type="button" disabled={searching || !searchStart.trim()} onClick={() => void searchPlaces("start")} className="mt-2 min-h-10 rounded-md border px-3 text-sm disabled:opacity-50">{t(searching ? "Searching…" : "Search starting place")}</button>
                   {startResults.length > 0 && <div className="mt-2 max-h-48 space-y-1 overflow-auto rounded-md border p-1" role="listbox" aria-label={t("Starting place results")}>{startResults.map((place, index) => <button type="button" role="option" aria-selected={false} key={`${place.label}-${index}`} onClick={() => mapPickRef.current(place)} className="block min-h-11 w-full rounded px-2 py-1 text-left text-xs hover:bg-muted"><span className="block font-medium">{place.label.split(",").slice(0, 2).join(",")}</span><span className="text-muted-foreground">{t(place.type ?? "Place")} · {t("click to pin and calculate")}</span></button>)}</div>}
                 </label>
                 <label className={`block space-y-1 rounded-lg p-2 text-sm ${activeEndpoint === "end" ? "bg-primary/5 ring-1 ring-primary/30" : ""}`}>
                   <span className="font-medium">{t("Destination location")}</span>
-                  <span className="flex items-center gap-2 rounded-md border border-input px-3"><MapPin className="h-4 w-4 shrink-0 text-cyan-600" /><input value={searchEnd} onFocus={() => setActiveEndpoint("end")} onChange={(e) => setSearchEnd(e.target.value)} className="h-11 min-w-0 flex-1 bg-transparent outline-none" placeholder={t("e.g. Jantar Mantar, New Delhi")} /></span>
+                  <span className="flex items-center gap-2 rounded-md border border-input px-3"><MapPin className="h-4 w-4 shrink-0 text-cyan-600" /><input value={searchEnd} readOnly={!signedIn} onFocus={async (event) => { if (!(await requireLocationAccount())) { event.currentTarget.blur(); return; } setActiveEndpoint("end"); }} onChange={(e) => setSearchEnd(e.target.value)} className="h-11 min-w-0 flex-1 bg-transparent outline-none read-only:cursor-pointer" placeholder={t("e.g. Jantar Mantar, New Delhi")} /></span>
                   <span className="mt-1 block truncate text-xs text-muted-foreground">{t("Selected: ")}{endPlace.label.replace(" · destination", ` · ${t("destination")}`)}</span>
                   <button type="button" disabled={searching || !searchEnd.trim()} onClick={() => void searchPlaces("end")} className="mt-2 min-h-10 rounded-md border px-3 text-sm disabled:opacity-50">{t(searching ? "Searching…" : "Search destination")}</button>
                   {endResults.length > 0 && <div className="mt-2 max-h-48 space-y-1 overflow-auto rounded-md border p-1" role="listbox" aria-label={t("Destination results")}>{endResults.map((place, index) => <button type="button" role="option" aria-selected={false} key={`${place.label}-${index}`} onClick={() => mapPickRef.current(place)} className="block min-h-11 w-full rounded px-2 py-1 text-left text-xs hover:bg-muted"><span className="block font-medium">{place.label.split(",").slice(0, 2).join(",")}</span><span className="text-muted-foreground">{t(place.type ?? "Place")} · {t("click to pin and calculate")}</span></button>)}</div>}
