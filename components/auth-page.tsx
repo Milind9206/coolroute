@@ -19,12 +19,26 @@ function safeNext(value: string | null) {
     : "/";
 }
 
+function subscribeToSearch(onChange: () => void) {
+  window.addEventListener("popstate", onChange);
+  return () => window.removeEventListener("popstate", onChange);
+}
+
+function getSearch() {
+  return window.location.search;
+}
+
+function getServerSearch() {
+  return "";
+}
+
 export default function AuthPage({ mode }: AuthPageProps) {
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
   const { t } = useLanguage();
-  const [mounted, setMounted] = React.useState(false);
-  const [destination, setDestination] = React.useState("/");
+  const search = React.useSyncExternalStore(subscribeToSearch, getSearch, getServerSearch);
+  const requestedNext = new URLSearchParams(search).get("next");
+  const destination = safeNext(requestedNext);
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -34,20 +48,16 @@ export default function AuthPage({ mode }: AuthPageProps) {
   const [resendAvailable, setResendAvailable] = React.useState(false);
   const [resending, setResending] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
-  const isDark = mounted ? resolvedTheme === "dark" : true;
+  const isDark = resolvedTheme !== "light";
   const signup = mode === "signup";
 
   React.useEffect(() => {
-    setMounted(true);
-    const requestedNext = new URLSearchParams(window.location.search).get("next");
     if (!requestedNext) {
       router.replace("/");
       return;
     }
-    const next = safeNext(requestedNext);
-    setDestination(next);
-    getLocalSession().then((session) => { if (session) router.replace(next); }).catch(() => undefined);
-  }, [router]);
+    getLocalSession().then((session) => { if (session) router.replace(destination); }).catch(() => undefined);
+  }, [destination, requestedNext, router]);
 
   const toggleTheme = () => setTheme(isDark ? "light" : "dark");
   const switchHref = `${signup ? "/login" : "/signup"}?next=${encodeURIComponent(destination)}`;

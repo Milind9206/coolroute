@@ -8,11 +8,7 @@ import { useLanguage } from "@/components/language-provider";
 export default function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const { t } = useLanguage();
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => setMounted(true), []);
-
-  const isDark = mounted ? resolvedTheme === "dark" : true;
+  const isDark = resolvedTheme !== "light";
 
   return (
     <button

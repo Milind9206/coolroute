@@ -11,14 +11,11 @@ export default function HomeClient() {
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
   const { t } = useLanguage();
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
-
   return (
     <main className="min-h-screen">
       <SculptureHero
         // Keep the hero's theme switch in sync with the rest of the app.
-        theme={mounted ? (resolvedTheme === "light" ? "light" : "dark") : undefined}
+        theme={resolvedTheme === "light" ? "light" : "dark"}
         onThemeChange={setTheme}
         onSignOut={() => { void signOutLocal().catch(() => undefined).finally(() => router.replace("/")); }}
         brand="CoolRoute"

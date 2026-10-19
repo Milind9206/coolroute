@@ -5,6 +5,26 @@ import { usePathname } from "next/navigation";
 
 export type Language = "en" | "hi";
 
+const LANGUAGE_STORAGE_KEY = "coolroute-language";
+const LANGUAGE_CHANGE_EVENT = "coolroute-language-change";
+
+function getStoredLanguage(): Language {
+  return window.localStorage.getItem(LANGUAGE_STORAGE_KEY) === "hi" ? "hi" : "en";
+}
+
+function getServerLanguage(): Language {
+  return "en";
+}
+
+function subscribeToLanguage(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(LANGUAGE_CHANGE_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(LANGUAGE_CHANGE_EVENT, onChange);
+  };
+}
+
 const hi: Record<string, string> = {
   "Switch language to Hindi": "भाषा हिंदी में बदलें",
   "Switch language to English": "भाषा अंग्रेज़ी में बदलें",
@@ -235,16 +255,11 @@ const LanguageContext = React.createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [language, setLanguageState] = React.useState<Language>("en");
-
-  React.useEffect(() => {
-    const saved = window.localStorage.getItem("coolroute-language");
-    if (saved === "hi" || saved === "en") setLanguageState(saved);
-  }, []);
+  const language = React.useSyncExternalStore(subscribeToLanguage, getStoredLanguage, getServerLanguage);
 
   const setLanguage = React.useCallback((next: Language) => {
-    setLanguageState(next);
-    window.localStorage.setItem("coolroute-language", next);
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
+    window.dispatchEvent(new Event(LANGUAGE_CHANGE_EVENT));
   }, []);
 
   React.useEffect(() => {

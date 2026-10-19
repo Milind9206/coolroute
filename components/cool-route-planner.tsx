@@ -49,6 +49,7 @@ type MapData = { base: FC; cool: FC; points: FC };
 type Place = { location: { lat: number; lon: number }; label: string; type?: string };
 type RemoteRoute = { coords: [number, number][]; distanceMeters: number; timeSeconds: number };
 type RemoteEvaluation = { sun: { altitude: number; azimuth: number }; baseline: RouteStats | null; cool: RouteStats | null; budgetMet: boolean; detourPct: number; alerts: RouteAlert[] };
+const EMPTY_REMOTE_ROUTES: RemoteRoute[] = [];
 const fmtHour = (h: number, language: "en" | "hi" = "en") => {
   const hh = Math.floor(h), mm = Math.round((h - hh) * 60);
   const ap = hh >= 12 ? "PM" : "AM";
@@ -215,6 +216,7 @@ export default function CoolRoutePlanner() {
   const sessionRequest = React.useRef<Promise<boolean> | null>(null);
   const [startPlace, setStartPlace] = React.useState<Place>({ location: { lat: 28.6285, lon: 77.215 }, label: "Connaught Place, New Delhi · start" });
   const [endPlace, setEndPlace] = React.useState<Place>({ location: { lat: 28.6285 + 4 * 0.0009, lon: 77.215 + 5 * 0.00102 }, label: "Connaught Place, New Delhi · destination" });
+  const routeRequestKey = [startPlace.location.lat, startPlace.location.lon, endPlace.location.lat, endPlace.location.lon].join(",");
   const [hour, setHour] = React.useState(13);
   const [shadeMult, setShadeMult] = React.useState(1);
   const [budgetMin, setBudgetMin] = React.useState(3);
@@ -227,9 +229,11 @@ export default function CoolRoutePlanner() {
   const [activeEndpoint, setActiveEndpoint] = React.useState<"start" | "end">("start");
   const [searching, setSearching] = React.useState(false);
   const [searchError, setSearchError] = React.useState("");
-  const [routeLoading, setRouteLoading] = React.useState(false);
-  const [routeError, setRouteError] = React.useState("");
-  const [remoteRoutes, setRemoteRoutes] = React.useState<RemoteRoute[]>([]);
+  const [routeResult, setRouteResult] = React.useState<{ key: string; routes: RemoteRoute[]; error: string } | null>(null);
+  const hasCurrentRouteResult = routeResult?.key === routeRequestKey;
+  const routeLoading = !hasCurrentRouteResult;
+  const routeError = hasCurrentRouteResult ? routeResult.error : "";
+  const remoteRoutes = hasCurrentRouteResult ? routeResult.routes : EMPTY_REMOTE_ROUTES;
   const [env, setEnv] = React.useState<{ temperatureC: number; uvIndex: number; source: string; timezone?: string; hourly?: { time: string; temperatureC: number; uvIndex: number }[] } | null>(null);
 
   React.useEffect(() => {
@@ -275,9 +279,8 @@ export default function CoolRoutePlanner() {
   const mapRef = React.useRef<maplibregl.Map | null>(null);
   const dataRef = React.useRef<MapData>(data);
   const mapPickRef = React.useRef<(place: Place) => void>(() => undefined);
-  dataRef.current = data;
 
-  mapPickRef.current = (place) => {
+  const pickMapPlace = React.useCallback((place: Place) => {
     if (!signedIn) {
       void requireLocationAccount();
       return;
@@ -295,23 +298,33 @@ export default function CoolRoutePlanner() {
     }
     mapRef.current?.flyTo({ center: [place.location.lon, place.location.lat], zoom: 17, speed: 1.2 });
     setSearchError("");
-  };
+  }, [activeEndpoint, requireLocationAccount, signedIn]);
+
+  React.useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  React.useEffect(() => {
+    mapPickRef.current = pickMapPlace;
+  }, [pickMapPlace]);
 
   // Request a real pedestrian route from OpenStreetMap routing data.
   React.useEffect(() => {
     const controller = new AbortController();
-    setRouteLoading(true);
-    setRouteError("");
-    fetch("/api/route", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ start: startPlace.location, end: endPlace.location }), signal: controller.signal })
+    const [startLat, startLon, endLat, endLon] = routeRequestKey.split(",").map(Number);
+    fetch("/api/route", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ start: { lat: startLat, lon: startLon }, end: { lat: endLat, lon: endLon } }), signal: controller.signal })
       .then(async (response) => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error ?? "Could not calculate a walking route.");
-        setRemoteRoutes(result.routes as RemoteRoute[]);
+        setRouteResult({ key: routeRequestKey, routes: result.routes as RemoteRoute[], error: "" });
       })
-      .catch((error: unknown) => { if (!controller.signal.aborted) { setRemoteRoutes([]); setRouteError(error instanceof Error ? error.message : "Could not calculate a walking route."); } })
-      .finally(() => { if (!controller.signal.aborted) setRouteLoading(false); });
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setRouteResult({ key: routeRequestKey, routes: [], error: error instanceof Error ? error.message : "Could not calculate a walking route." });
+        }
+      });
     return () => controller.abort();
-  }, [startPlace, endPlace]);
+  }, [routeRequestKey]);
 
   React.useEffect(() => {
     fetch(`/api/environment?lat=${startPlace.location.lat.toFixed(4)}&lon=${startPlace.location.lon.toFixed(4)}`)

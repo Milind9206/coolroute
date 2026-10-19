@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Smartphone, SlidersHorizontal, Sun, ThermometerSun, Trees, Waypoints } from "lucide-react";
+import { ArrowUpRight, Smartphone, SlidersHorizontal, Sun, ThermometerSun, Trees, Waypoints } from "lucide-react";
 import { marketingContent } from "@/lib/marketing-content";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { RouteIllustration } from "@/components/marketing/route-illustration";
